@@ -1,0 +1,259 @@
+package com.istatistik.service;
+
+import com.istatistik.dto.DataRequest;
+import com.istatistik.dto.FrequencyRow;
+import com.istatistik.dto.StatisticsResponse;
+import com.istatistik.dto.StratifiedRow;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Service
+public class StatisticsService {
+
+    // Ana hesaplama metodu - tüm istatistiksel işlemleri çalıştırır
+    public StatisticsResponse hesapla(DataRequest istek) {
+        List<Double> veriler = istek.getData();
+        int orneklemBuyuklugu = istek.getSampleSize();
+
+        // Veri kontrolü
+        if (veriler == null || veriler.isEmpty()) {
+            throw new IllegalArgumentException("Veri listesi boş olamaz.");
+        }
+        if (orneklemBuyuklugu <= 0 || orneklemBuyuklugu > veriler.size()) {
+            throw new IllegalArgumentException("Örneklem büyüklüğü 0'dan büyük ve veri sayısından küçük veya eşit olmalıdır.");
+        }
+
+        // Tüm sonuçları hesapla
+        StatisticsResponse sonuc = new StatisticsResponse();
+        sonuc.setBasitRastgeleOrneklem(basitRastgeleOrneklemOlustur(veriler, orneklemBuyuklugu));
+        sonuc.setSistematikOrneklem(sistematikOrneklemOlustur(veriler, orneklemBuyuklugu));
+        sonuc.setBasitSeri(basitSeriOlustur(veriler));
+        sonuc.setFrekansSeries(frekansSerisiOlustur(veriler));
+        sonuc.setFrekansTablosu(frekansTablosuOlustur(veriler, istek.getClassCount()));
+        sonuc.setTabakaliOrneklem(tabakaliOrneklemOlustur(veriler, orneklemBuyuklugu, istek.getStrataCount()));
+
+        return sonuc;
+    }
+
+    
+    // 1. BASİT RASTGELE ÖRNEKLEM
+    // Veri setinden rastgele n tane eleman seçer
+    
+    private List<Double> basitRastgeleOrneklemOlustur(List<Double> veriler, int n) {
+        // Tüm indeksleri bir listeye koy
+        List<Integer> indeksler = new ArrayList<>();
+        for (int i = 0; i < veriler.size(); i++) {
+            indeksler.add(i);
+        }
+
+        // İndeksleri karıştır (rastgele sırala)
+        Collections.shuffle(indeksler);
+
+        // İlk n indeksi seç ve sırala
+        List<Integer> secilenIndeksler = indeksler.subList(0, n);
+        Collections.sort(secilenIndeksler);
+
+        // Seçilen indekslerdeki değerleri al
+        List<Double> orneklem = new ArrayList<>();
+        for (int indeks : secilenIndeksler) {
+            orneklem.add(veriler.get(indeks));
+        }
+
+        return orneklem;
+    }
+
+    
+    // 2. SİSTEMATİK ÖRNEKLEM
+    // k = N/n aralığıyla, rastgele başlayarak seçer
+
+    private List<Double> sistematikOrneklemOlustur(List<Double> veriler, int n) {
+        int N = veriler.size();
+
+        // Adım aralığını hesapla: k = N / n
+        int k = N / n;
+        if (k < 1) k = 1;
+
+        // 0 ile k arasında rastgele bir başlangıç noktası seç
+        Random rastgele = new Random();
+        int baslangic = rastgele.nextInt(k);
+
+        // Başlangıçtan itibaren her k. elemanı seç
+        List<Double> orneklem = new ArrayList<>();
+        for (int i = baslangic; i < N && orneklem.size() < n; i += k) {
+            orneklem.add(veriler.get(i));
+        }
+
+        return orneklem;
+    }
+
+    
+    // 3. BASİT SERİ
+    // Verileri küçükten büyüğe sıralar
+    
+    private List<Double> basitSeriOlustur(List<Double> veriler) {
+        List<Double> sirali = new ArrayList<>(veriler);
+        Collections.sort(sirali);
+        return sirali;
+    }
+
+    
+    // 4. FREKANS SERİSİ
+    // Her değerin kaç kez tekrarlandığını sayar
+
+    private Map<Double, Integer> frekansSerisiOlustur(List<Double> veriler) {
+        // TreeMap kullanarak değerleri sıralı tutar
+        Map<Double, Integer> frekansSayaci = new TreeMap<>();
+
+        for (Double deger : veriler) {
+            if (frekansSayaci.containsKey(deger)) {
+                frekansSayaci.put(deger, frekansSayaci.get(deger) + 1);
+            } else {
+                frekansSayaci.put(deger, 1);
+            }
+        }
+
+        return frekansSayaci;
+    }
+
+    
+    // 5. FREKANS TABLOSU
+    // Verileri sınıf aralıklarına gruplar
+    // Sturges kuralı: k = 1 + 3.322 * log10(N)
+    
+    private List<FrequencyRow> frekansTablosuOlustur(List<Double> veriler, Integer sinifSayisiParametre) {
+        int N = veriler.size();
+        double enKucuk = Collections.min(veriler);
+        double enBuyuk = Collections.max(veriler);
+
+        // Sınıf sayısını belirle (kullanıcı girmediyse Sturges kuralı)
+        int sinifSayisi;
+        if (sinifSayisiParametre != null && sinifSayisiParametre > 0) {
+            sinifSayisi = sinifSayisiParametre;
+        } else {
+            sinifSayisi = (int) Math.ceil(1 + 3.322 * Math.log10(N));
+        }
+
+        // Sınıf genişliğini hesapla
+        double aralik = enBuyuk - enKucuk;
+        double sinifGenisligi = Math.ceil(aralik / sinifSayisi);
+        if (sinifGenisligi == 0) sinifGenisligi = 1;
+
+        // Her sınıf aralığı için frekansları hesapla
+        List<FrequencyRow> satirlar = new ArrayList<>();
+        int kumulatifFrekans = 0;
+
+        for (int i = 0; i < sinifSayisi; i++) {
+            double altSinir = enKucuk + i * sinifGenisligi;
+            double ustSinir = altSinir + sinifGenisligi;
+
+            // Bu aralığa düşen verileri say
+            int frekans = 0;
+            for (Double deger : veriler) {
+                if (i == sinifSayisi - 1) {
+                    // Son sınıf üst sınırı dahil eder
+                    if (deger >= altSinir && deger <= ustSinir) frekans++;
+                } else {
+                    if (deger >= altSinir && deger < ustSinir) frekans++;
+                }
+            }
+
+            // Kümülatif frekansı güncelle
+            kumulatifFrekans += frekans;
+
+            // Bağıl frekans = frekans / toplam veri sayısı
+            double bagilFrekans = Math.round(((double) frekans / N) * 10000.0) / 10000.0;
+            double kumulatifBagilFrekans = Math.round(((double) kumulatifFrekans / N) * 10000.0) / 10000.0;
+
+            String aralikMetni = sayiFormatla(altSinir) + " - " + sayiFormatla(ustSinir);
+
+            satirlar.add(new FrequencyRow(
+                    aralikMetni, altSinir, ustSinir,
+                    frekans, bagilFrekans,
+                    kumulatifFrekans, kumulatifBagilFrekans));
+        }
+
+        return satirlar;
+    }
+
+    
+    // 6. TABAKALI ÖRNEKLEM
+    // Veriyi tabakalara ayırıp her tabakadan
+    // oransal (proportional) seçim yapar
+    
+    private List<StratifiedRow> tabakaliOrneklemOlustur(List<Double> veriler, int orneklemBuyuklugu, Integer tabakaSayisiParametre) {
+        // Adım 1: Verileri sırala
+        List<Double> sirali = new ArrayList<>(veriler);
+        Collections.sort(sirali);
+        int N = sirali.size();
+
+        // Adım 2: Tabaka sayısını belirle (kullanıcı girmediyse karekök kuralı)
+        int tabakaSayisi;
+        if (tabakaSayisiParametre != null && tabakaSayisiParametre > 0) {
+            tabakaSayisi = tabakaSayisiParametre;
+        } else {
+            tabakaSayisi = (int) Math.round(Math.sqrt(N));
+        }
+        if (tabakaSayisi < 2) tabakaSayisi = 2;
+        if (tabakaSayisi > N) tabakaSayisi = N;
+
+        // Adım 3: Sıralı veriyi eşit parçalara böl
+        List<List<Double>> tabakalar = new ArrayList<>();
+        int temelBoyut = N / tabakaSayisi;
+        int kalan = N % tabakaSayisi;
+        int indeks = 0;
+
+        for (int i = 0; i < tabakaSayisi; i++) {
+            int boyut = temelBoyut + (i < kalan ? 1 : 0);
+            tabakalar.add(new ArrayList<>(sirali.subList(indeks, indeks + boyut)));
+            indeks += boyut;
+        }
+
+        // Adım 4: Her tabakadan oransal seçim yap
+        List<StratifiedRow> sonuc = new ArrayList<>();
+        int toplamSecilen = 0;
+        Random rastgele = new Random();
+
+        for (int i = 0; i < tabakalar.size(); i++) {
+            List<Double> tabaka = tabakalar.get(i);
+
+            // Oransal dağılım: n_i = round(N_i / N * n)
+            int secilenAdet;
+            if (i == tabakalar.size() - 1) {
+                // Son tabaka kalan elemanları alır
+                secilenAdet = orneklemBuyuklugu - toplamSecilen;
+            } else {
+                double oran = (double) tabaka.size() / N;
+                secilenAdet = (int) Math.round(oran * orneklemBuyuklugu);
+            }
+
+            // Sınır kontrolü
+            secilenAdet = Math.min(secilenAdet, tabaka.size());
+            secilenAdet = Math.max(secilenAdet, 0);
+
+            // Tabakadan rastgele seç
+            List<Double> tabakaKopya = new ArrayList<>(tabaka);
+            Collections.shuffle(tabakaKopya, rastgele);
+            List<Double> secilenler = new ArrayList<>(tabakaKopya.subList(0, secilenAdet));
+            Collections.sort(secilenler);
+
+            toplamSecilen += secilenAdet;
+
+            // Tabaka etiketini oluştur
+            String etiket = "Tabaka " + (i + 1) + " (" + sayiFormatla(tabaka.get(0))
+                    + " - " + sayiFormatla(tabaka.get(tabaka.size() - 1)) + ")";
+
+            sonuc.add(new StratifiedRow(etiket, tabaka.size(), secilenAdet, secilenler));
+        }
+
+        return sonuc;
+    }
+
+    // Sayıyı güzel formatta gösterir (tam sayıysa ondalık göstermez)
+    private String sayiFormatla(double deger) {
+        if (deger == Math.floor(deger) && !Double.isInfinite(deger)) {
+            return String.valueOf((int) deger);
+        }
+        return String.format("%.2f", deger);
+    }
+}

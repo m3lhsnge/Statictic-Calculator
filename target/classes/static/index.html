@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İstatistik Örneklem Hesaplama</title>
+    <meta name="description" content="Basit Rastgele Örneklem, Sistematik Örneklem, Basit Seri, Frekans Serisi ve Frekans Tablosu hesaplama uygulaması.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Animated background particles -->
+    <div class="bg-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </div>
+            <h1>İstatistik Hesaplama</h1>
+            <p class="subtitle">Örneklem ve Seri Analiz Aracı</p>
+        </header>
+
+        <!-- Input Section -->
+        <section class="card input-card" id="input-section">
+            <h2 class="card-title">
+                <span class="card-icon">📊</span>
+                Veri Girişi
+            </h2>
+            <div class="form-group">
+                <label for="dataInput">Veri Seti <span class="hint">(virgülle ayrılmış sayılar)</span></label>
+                <textarea id="dataInput" placeholder="Örnek: 5, 12, 8, 3, 15, 7, 20, 11, 9, 6, 14, 2, 18, 10, 4" rows="3"></textarea>
+            </div>
+            <div class="form-row form-row-3">
+                <div class="form-group">
+                    <label for="sampleSize">Örneklem Büyüklüğü (n)</label>
+                    <input type="number" id="sampleSize" placeholder="Örnek: 5" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="classCount">Sınıf Sayısı <span class="hint">(opsiyonel)</span></label>
+                    <input type="number" id="classCount" placeholder="Otomatik (Sturges)" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="strataCount">Tabaka Sayısı <span class="hint">(opsiyonel)</span></label>
+                    <input type="number" id="strataCount" placeholder="Otomatik (√N)" min="2">
+                </div>
+            </div>
+            <button id="calculateBtn" class="btn-calculate" onclick="calculate()">
+                <span class="btn-text">Hesapla</span>
+                <span class="btn-icon">→</span>
+            </button>
+            <div id="errorMessage" class="error-message" style="display:none;"></div>
+        </section>
+
+        <!-- Results Section -->
+        <div id="results" class="results-wrapper" style="display:none;">
+
+            <!-- Basit Rastgele Örneklem -->
+            <section class="card result-card" id="section-bro">
+                <h2 class="card-title">
+                    <span class="card-icon">🎲</span>
+                    Basit Rastgele Örneklem
+                </h2>
+                <p class="card-description">Veri setinden rastgele seçilen <strong id="bro-count"></strong> birim</p>
+                <div class="table-wrapper">
+                    <table id="table-bro">
+                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Sistematik Örneklem -->
+            <section class="card result-card" id="section-so">
+                <h2 class="card-title">
+                    <span class="card-icon">📐</span>
+                    Sistematik Örneklem
+                </h2>
+                <p class="card-description">Her <strong id="so-k"></strong>. birim seçilerek oluşturulan örneklem</p>
+                <div class="table-wrapper">
+                    <table id="table-so">
+                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tabakalı Örneklem -->
+            <section class="card result-card" id="section-to">
+                <h2 class="card-title">
+                    <span class="card-icon">🏗️</span>
+                    Tabakalı Örneklem
+                </h2>
+                <p class="card-description">Veriler tabakalara ayrılarak her tabakadan oransal seçim yapılmıştır</p>
+                <div class="table-wrapper">
+                    <table id="table-to">
+                        <thead>
+                            <tr>
+                                <th>Tabaka</th>
+                                <th>Tabaka Büyüklüğü</th>
+                                <th>Seçilen Adet</th>
+                                <th>Seçilen Değerler</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Basit Seri -->
+            <section class="card result-card" id="section-bs">
+                <h2 class="card-title">
+                    <span class="card-icon">📈</span>
+                    Basit Seri
+                </h2>
+                <p class="card-description">Verilerin küçükten büyüğe sıralanmış hali</p>
+                <div class="table-wrapper">
+                    <table id="table-bs">
+                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Frekans Serisi -->
+            <section class="card result-card" id="section-fs">
+                <h2 class="card-title">
+                    <span class="card-icon">🔢</span>
+                    Frekans Serisi
+                </h2>
+                <p class="card-description">Her değerin veri setinde kaç kez tekrarlandığı</p>
+                <div class="table-wrapper">
+                    <table id="table-fs">
+                        <thead><tr><th>Değer (xᵢ)</th><th>Frekans (fᵢ)</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Frekans Tablosu -->
+            <section class="card result-card" id="section-ft">
+                <h2 class="card-title">
+                    <span class="card-icon">📋</span>
+                    Frekans Tablosu
+                </h2>
+                <p class="card-description">Gruplandırılmış frekans dağılım tablosu</p>
+                <div class="table-wrapper">
+                    <table id="table-ft">
+                        <thead>
+                            <tr>
+                                <th>Sınıf Aralığı</th>
+                                <th>Frekans (fᵢ)</th>
+                                <th>Bağıl Frekans (fᵢ/n)</th>
+                                <th>Kümülatif Frekans</th>
+                                <th>Kümülatif Bağıl Frekans</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>İstatistik Örneklem Hesaplama &copy; 2026</p>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

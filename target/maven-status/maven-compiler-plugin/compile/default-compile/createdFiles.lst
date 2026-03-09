@@ -1,0 +1,7 @@
+com\istatistik\dto\DataRequest.class
+com\istatistik\dto\FrequencyRow.class
+com\istatistik\dto\StratifiedRow.class
+com\istatistik\service\StatisticsService.class
+com\istatistik\dto\StatisticsResponse.class
+com\istatistik\IstatistikApplication.class
+com\istatistik\controller\StatisticsController.class

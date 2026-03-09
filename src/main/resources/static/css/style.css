@@ -1,0 +1,618 @@
+/* ============================
+   CSS Variables & Reset
+   ============================ */
+:root {
+    --bg-primary: #0f0f1a;
+    --bg-secondary: #1a1a2e;
+    --bg-card: rgba(26, 26, 46, 0.7);
+    --bg-card-hover: rgba(30, 30, 55, 0.85);
+    --border-card: rgba(255, 255, 255, 0.06);
+    --text-primary: #e8e8f0;
+    --text-secondary: #9a9ab0;
+    --text-muted: #6a6a80;
+    --accent-1: #6c63ff;
+    --accent-2: #00d2ff;
+    --accent-3: #a855f7;
+    --gradient-primary: linear-gradient(135deg, #6c63ff 0%, #00d2ff 100%);
+    --gradient-header: linear-gradient(135deg, #6c63ff 0%, #a855f7 50%, #00d2ff 100%);
+    --gradient-btn: linear-gradient(135deg, #6c63ff 0%, #a855f7 100%);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --shadow-glow: 0 0 40px rgba(108, 99, 255, 0.15);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* ============================
+   Animated Background
+   ============================ */
+.bg-particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.particle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.15;
+    animation: float 20s infinite ease-in-out;
+}
+
+.particle:nth-child(1) {
+    width: 300px;
+    height: 300px;
+    background: var(--accent-1);
+    top: -100px;
+    left: -100px;
+    animation-delay: 0s;
+    animation-duration: 25s;
+}
+
+.particle:nth-child(2) {
+    width: 200px;
+    height: 200px;
+    background: var(--accent-2);
+    top: 60%;
+    right: -80px;
+    animation-delay: -5s;
+    animation-duration: 20s;
+}
+
+.particle:nth-child(3) {
+    width: 150px;
+    height: 150px;
+    background: var(--accent-3);
+    bottom: 10%;
+    left: 20%;
+    animation-delay: -10s;
+    animation-duration: 22s;
+}
+
+.particle:nth-child(4) {
+    width: 250px;
+    height: 250px;
+    background: var(--accent-1);
+    top: 30%;
+    right: 20%;
+    animation-delay: -7s;
+    animation-duration: 18s;
+}
+
+.particle:nth-child(5) {
+    width: 180px;
+    height: 180px;
+    background: var(--accent-2);
+    top: 10%;
+    left: 50%;
+    animation-delay: -3s;
+    animation-duration: 23s;
+}
+
+.particle:nth-child(6) {
+    width: 120px;
+    height: 120px;
+    background: var(--accent-3);
+    bottom: 30%;
+    right: 40%;
+    animation-delay: -12s;
+    animation-duration: 19s;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    25% {
+        transform: translate(40px, -60px) scale(1.1);
+    }
+
+    50% {
+        transform: translate(-30px, 40px) scale(0.9);
+    }
+
+    75% {
+        transform: translate(50px, 20px) scale(1.05);
+    }
+}
+
+/* ============================
+   Container
+   ============================ */
+.container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+/* ============================
+   Header
+   ============================ */
+.header {
+    text-align: center;
+    padding: 50px 20px 40px;
+    margin-bottom: 30px;
+}
+
+.header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: var(--gradient-primary);
+    color: #fff;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.35);
+    animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 8px 30px rgba(108, 99, 255, 0.35);
+    }
+
+    50% {
+        box-shadow: 0 8px 50px rgba(108, 99, 255, 0.55);
+    }
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: var(--gradient-header);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    font-weight: 400;
+}
+
+/* ============================
+   Cards
+   ============================ */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    margin-bottom: 24px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-card);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card), var(--shadow-glow);
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+.card-icon {
+    font-size: 1.4rem;
+}
+
+.card-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.card-description strong {
+    color: var(--accent-2);
+    font-weight: 600;
+}
+
+/* ============================
+   Form Elements
+   ============================ */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.hint {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 0.8rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-row-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+textarea,
+input[type="number"] {
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 0.95rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    outline: none;
+    resize: vertical;
+}
+
+textarea:focus,
+input[type="number"]:focus {
+    border-color: var(--accent-1);
+    background: rgba(108, 99, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+}
+
+textarea::placeholder,
+input[type="number"]::placeholder {
+    color: var(--text-muted);
+}
+
+/* ============================
+   Button
+   ============================ */
+.btn-calculate {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 40px;
+    background: var(--gradient-btn);
+    border: none;
+    border-radius: var(--radius-md);
+    color: #fff;
+    font-family: var(--font);
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
+    margin-top: 8px;
+}
+
+.btn-calculate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(108, 99, 255, 0.55);
+    filter: brightness(1.1);
+}
+
+.btn-calculate:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 12px rgba(108, 99, 255, 0.3);
+}
+
+.btn-calculate.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn-icon {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-calculate:hover .btn-icon {
+    transform: translateX(4px);
+}
+
+/* ============================
+   Error Message
+   ============================ */
+.error-message {
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+    border-radius: var(--radius-sm);
+    color: #ff6b81;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Field validation states */
+.field-error {
+    border-color: #ff6b81 !important;
+    box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.2) !important;
+}
+
+.shake {
+    animation: shakeAnim 0.4s ease;
+}
+
+@keyframes shakeAnim {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(6px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+/* ============================
+   Results Wrapper
+   ============================ */
+.results-wrapper {
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.result-card {
+    animation: slideIn 0.5s ease forwards;
+    opacity: 0;
+}
+
+.result-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.result-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.result-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.result-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.result-card:nth-child(5) {
+    animation-delay: 0.5s;
+}
+
+.result-card:nth-child(6) {
+    animation-delay: 0.6s;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================
+   Tables
+   ============================ */
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+thead {
+    background: var(--gradient-primary);
+}
+
+thead th {
+    padding: 14px 18px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #fff;
+    white-space: nowrap;
+}
+
+tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.2s ease;
+}
+
+tbody tr:hover {
+    background: rgba(108, 99, 255, 0.08);
+}
+
+tbody tr:last-child {
+    border-bottom: none;
+}
+
+tbody td {
+    padding: 12px 18px;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+tbody tr:nth-child(even):hover {
+    background: rgba(108, 99, 255, 0.08);
+}
+
+/* Special styling for the frequency table */
+#table-ft thead th {
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+#table-ft tbody td {
+    text-align: center;
+}
+
+/* ============================
+   Footer
+   ============================ */
+.footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* ============================
+   Responsive
+   ============================ */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px 12px 40px;
+    }
+
+    .header {
+        padding: 30px 10px 20px;
+    }
+
+    .header h1 {
+        font-size: 1.8rem;
+    }
+
+    .card {
+        padding: 20px 16px;
+        border-radius: var(--radius-md);
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-calculate {
+        width: 100%;
+        justify-content: center;
+    }
+
+    thead th {
+        padding: 10px 12px;
+        font-size: 0.75rem;
+    }
+
+    tbody td {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.4rem;
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* ============================
+   Scrollbar Styling
+   ============================ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(108, 99, 255, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 99, 255, 0.5);
+}
