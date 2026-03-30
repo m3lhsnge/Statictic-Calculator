@@ -9,20 +9,38 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .module-result {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: none;
+        }
+        .error-msg {
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .action-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 1rem;
+        }
+        .btn-sm {
+            padding: 0.6rem 1.2rem;
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
 <body>
-    <!-- Animated background particles -->
     <div class="bg-particles">
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div><div class="particle"></div>
     </div>
 
     <div class="container">
-        <!-- Header -->
         <header class="header">
             <div class="header-icon">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -31,216 +49,153 @@
                     <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
             </div>
-            <h1>İstatistik Hesaplama</h1>
-            <p class="subtitle">Örneklem ve Seri Analiz Aracı</p>
+            <h1>İstatistik Analiz Modülleri</h1>
+            <p class="subtitle">Her hesaplama bölümü tamamen bağımsız çalışır.</p>
         </header>
 
-        <!-- Örneklem Parametreleri (BRO, Sistematik, Tabakalı için) -->
-        <section class="card input-card" id="sampling-section">
-            <h2 class="card-title">
-                <span class="card-icon">🎯</span>
-                Örneklem Parametreleri
-            </h2>
-            <p class="card-description" style="margin-bottom: 1rem; opacity: 0.7;">Basit Rastgele, Sistematik ve Tabakalı Örneklem için popülasyon parametrelerini giriniz</p>
-            <div class="form-row form-row-4">
+        <!-- Modül 1: Basit Rastgele Örneklem -->
+        <section class="card input-card" id="mod-br">
+            <h2 class="card-title"><span class="card-icon">🎲</span> Basit Rastgele Örneklem (Tam Sayı Aralığı)</h2>
+            <div class="form-row form-row-3">
                 <div class="form-group">
-                    <label for="minValue">Min Değer</label>
-                    <input type="number" id="minValue" placeholder="Örnek: 1" step="any">
+                    <label for="brMin">Min Değer (Tam Sayı)</label>
+                    <input type="number" id="brMin" placeholder="Örn: 1">
                 </div>
                 <div class="form-group">
-                    <label for="maxValue">Max Değer</label>
-                    <input type="number" id="maxValue" placeholder="Örnek: 100" step="any">
+                    <label for="brMax">Max Değer (Tam Sayı)</label>
+                    <input type="number" id="brMax" placeholder="Örn: 100">
                 </div>
                 <div class="form-group">
-                    <label for="populationSize">Büyük N <span class="hint">(veri sayısı)</span></label>
-                    <input type="number" id="populationSize" placeholder="Örnek: 50" min="1">
-                </div>
-                <div class="form-group">
-                    <label for="sampleSize">Küçük n <span class="hint">(örneklem)</span></label>
-                    <input type="number" id="sampleSize" placeholder="Örnek: 10" min="1">
+                    <label for="brN">Örneklem Adedi (n)</label>
+                    <input type="number" id="brN" placeholder="Örn: 10" min="1">
                 </div>
             </div>
-            <div class="form-row form-row-2" style="margin-top: 0.5rem;">
-                <div class="form-group">
-                    <label for="strataCount">Tabaka Sayısı <span class="hint">(opsiyonel)</span></label>
-                    <input type="number" id="strataCount" placeholder="Otomatik (√N)" min="2">
-                </div>
-                <div class="form-group" style="display: flex; align-items: flex-end;">
+            <div class="action-row">
+                <div id="brError" class="error-msg" style="flex-grow:1; text-align:left;"></div>
+                <button class="btn-calculate btn-sm" onclick="calcBasitRastgele(this)">Hesapla</button>
+            </div>
+            <div class="module-result" id="brResult">
+                <h3 style="margin-bottom:1rem; font-size:1.1rem; color:var(--text-primary);">Sonuçlar (<span id="brCount">0</span> birim)</h3>
+                <div class="table-wrapper">
+                    <table id="brTable"><thead><tr><th>Sıra</th><th>Değer</th></tr></thead><tbody></tbody></table>
                 </div>
             </div>
         </section>
 
-        <!-- Input Section (Veri Seti - Basit Seri, Frekans için) -->
-        <section class="card input-card" id="input-section">
-            <h2 class="card-title">
-                <span class="card-icon">📊</span>
-                Veri Girişi
-            </h2>
-            <p class="card-description" style="margin-bottom: 1rem; opacity: 0.7;">Basit Seri, Frekans Serisi ve Frekans Tablosu için veri setini giriniz</p>
-            <div class="form-group">
-                <label for="dataInput">Veri Seti <span class="hint">(virgülle ayrılmış sayılar)</span></label>
-                <textarea id="dataInput" placeholder="Örnek: 5, 12, 8, 3, 15, 7, 20, 11, 9, 6, 14, 2, 18, 10, 4" rows="3"></textarea>
-            </div>
+        <!-- Modül 2: Sistematik Örneklem -->
+        <section class="card input-card" id="mod-sys">
+            <h2 class="card-title"><span class="card-icon">📐</span> Sistematik Örneklem (k=N/n)</h2>
             <div class="form-row form-row-2">
                 <div class="form-group">
-                    <label for="dataSampleSize">Örneklem Büyüklüğü (n) <span class="hint">(opsiyonel)</span></label>
-                    <input type="number" id="dataSampleSize" placeholder="Örnek: 5" min="1">
+                    <label for="sysBuyukN">Popülasyon (Büyük N)</label>
+                    <input type="number" id="sysBuyukN" placeholder="Örn: 100" min="1">
                 </div>
                 <div class="form-group">
-                    <label for="classCount">Sınıf Sayısı <span class="hint">(opsiyonel)</span></label>
-                    <input type="number" id="classCount" placeholder="Otomatik (Sturges)" min="1">
+                    <label for="sysKucukN">Örneklem (Küçük n)</label>
+                    <input type="number" id="sysKucukN" placeholder="Örn: 10" min="1">
+                </div>
+            </div>
+            <div class="action-row">
+                <div id="sysError" class="error-msg" style="flex-grow:1; text-align:left;"></div>
+                <button class="btn-calculate btn-sm" onclick="calcSistematik(this)">Hesapla</button>
+            </div>
+            <div class="module-result" id="sysResult">
+                <h3 style="margin-bottom:1rem; font-size:1.1rem; color:var(--text-primary);">Atlama Aralığı: k = <strong id="sysK"></strong></h3>
+                <div class="table-wrapper">
+                    <table id="sysTable"><thead><tr><th>Sıra</th><th>Değer</th></tr></thead><tbody></tbody></table>
                 </div>
             </div>
         </section>
 
-        <!-- Hesapla Butonu -->
-        <div style="text-align: center; margin: 1.5rem 0;">
-            <button id="calculateBtn" class="btn-calculate" onclick="calculate()">
-                <span class="btn-text">Hesapla</span>
-                <span class="btn-icon">→</span>
-            </button>
-        </div>
-        <div id="errorMessage" class="error-message" style="display:none;"></div>
-
-        <!-- Results Section -->
-        <div id="results" class="results-wrapper" style="display:none;">
-
-            <!-- Üretilen Popülasyon -->
-            <section class="card result-card" id="section-pop">
-                <h2 class="card-title">
-                    <span class="card-icon">🌐</span>
-                    Üretilen Popülasyon
-                </h2>
-                <p class="card-description">Min-Max arasında rastgele üretilen <strong id="pop-count"></strong> birim</p>
+        <!-- Modül 3: Tabakalı Örneklem -->
+        <section class="card input-card" id="mod-tab">
+            <h2 class="card-title"><span class="card-icon">🏗️</span> Tabakalı Örneklem (Oranlara Göre Dağılım)</h2>
+            <div class="form-row form-row-4">
+                <div class="form-group">
+                    <label for="tabMin">Min Değer</label>
+                    <input type="number" id="tabMin" placeholder="Örn: 1" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="tabMax">Max Değer</label>
+                    <input type="number" id="tabMax" placeholder="Örn: 100" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="tabBuyukN">Büyük N</label>
+                    <input type="number" id="tabBuyukN" placeholder="Örn: 100" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="tabKucukN">Küçük n</label>
+                    <input type="number" id="tabKucukN" placeholder="Örn: 10" min="1">
+                </div>
+            </div>
+            <div class="form-row form-row-2" style="margin-top: 1rem;">
+                <div class="form-group">
+                    <label for="tabSayisi">Tabaka Sayısı</label>
+                    <input type="number" id="tabSayisi" placeholder="Örn: 3" min="1" max="30" oninput="generateStrataInputs()">
+                </div>
+            </div>
+            
+            <div id="strataRatiosContainer" style="display: none; margin-top: 0.5rem; background:rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                <label style="display:block; margin-bottom: 0.8rem; font-size: 0.9rem; color: var(--text-muted);">Tabaka Oranlarını Giriniz (Toplamı otomatik oranlanır)</label>
+                <div id="strataInputsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;">
+                    <!-- Dinamik olarak üretilecek input alanları -->
+                </div>
+            </div>
+            <div class="action-row">
+                <div id="tabError" class="error-msg" style="flex-grow:1; text-align:left;"></div>
+                <button class="btn-calculate btn-sm" onclick="calcTabakali(this)">Hesapla</button>
+            </div>
+            <div class="module-result" id="tabResult">
                 <div class="table-wrapper">
-                    <table id="table-pop">
-                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
+                    <table id="tabTable">
+                        <thead><tr><th>Tabaka Adı</th><th>Tabaka Büyüklüğü</th><th>Seçilen Adet</th><th>Seçilen Değerler</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Basit Rastgele Örneklem -->
-            <section class="card result-card" id="section-bro">
-                <h2 class="card-title">
-                    <span class="card-icon">🎲</span>
-                    Basit Rastgele Örneklem
-                </h2>
-                <p class="card-description">Popülasyondan rastgele seçilen <strong id="bro-count"></strong> birim</p>
-                <div class="table-wrapper">
-                    <table id="table-bro">
-                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+        <!-- Modül 4: Veri Seti Üzerinden İşlemler -->
+        <section class="card input-card" id="mod-data">
+            <h2 class="card-title"><span class="card-icon">📊</span> Veri Seti Modülleri</h2>
+            <p class="card-description" style="margin-bottom: 1rem; opacity: 0.7;">Girdiğiniz Veri Seti üzerinden hesaplamak istediğiniz bağımsız işlemi seçin.</p>
+            <div class="form-group">
+                <label for="dsInput">Veri Seti (Sayıları virgül veya boşlukla ayırınız)</label>
+                <textarea id="dsInput" placeholder="Örn: 5, 12, 8, 3, 15, 7, 20" rows="3"></textarea>
+            </div>
+            
+            <!-- Alt modüller (Sekmeler gibi butonlar) -->
+            <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:1.2rem; margin-top:1rem; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+                    <div class="form-group" style="margin:0; width:150px;">
+                        <label for="dsSampleN">Örneklem Alınacaksa (n)</label>
+                        <input type="number" id="dsSampleN" placeholder="Örn: 3">
+                    </div>
+                    <div class="form-group" style="margin:0; width:150px;">
+                        <label for="dsClassCount">Sınıf Sayısı (Opsiyonel)</label>
+                        <input type="number" id="dsClassCount" placeholder="Sturges kuralı">
+                    </div>
                 </div>
-            </section>
-
-            <!-- Sistematik Örneklem -->
-            <section class="card result-card" id="section-so">
-                <h2 class="card-title">
-                    <span class="card-icon">📐</span>
-                    Sistematik Örneklem
-                </h2>
-                <p class="card-description">Her <strong id="so-k"></strong>. birim seçilerek oluşturulan örneklem</p>
-                <div class="table-wrapper">
-                    <table id="table-so">
-                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+                
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:1.5rem;">
+                    <button class="btn-calculate btn-sm" style="background:#3b82f6" onclick="calcData('basitSeri', this)">Basit Seri</button>
+                    <button class="btn-calculate btn-sm" style="background:#10b981" onclick="calcData('frekansSerisi', this)">Frekans Serisi</button>
+                    <button class="btn-calculate btn-sm" style="background:#8b5cf6" onclick="calcData('frekansTablosu', this)">Frekans Tablosu</button>
+                    <button class="btn-calculate btn-sm" style="background:#f59e0b" onclick="calcData('veriOrneklemi', this)">İçinden Örneklem Seç</button>
                 </div>
-            </section>
+                <div id="dsError" class="error-msg" style="margin-top:0.5rem;"></div>
+            </div>
 
-            <!-- Tabakalı Örneklem -->
-            <section class="card result-card" id="section-to">
-                <h2 class="card-title">
-                    <span class="card-icon">🏗️</span>
-                    Tabakalı Örneklem
-                </h2>
-                <p class="card-description">Popülasyon tabakalara ayrılarak her tabakadan oransal seçim yapılmıştır</p>
+            <!-- Ortak Dataset Sonuç Alanı -->
+            <div class="module-result" id="dsResult">
+                <h3 id="dsTitle" style="margin-bottom:1rem; font-size:1.1rem; color:var(--text-primary);">Sonuç</h3>
                 <div class="table-wrapper">
-                    <table id="table-to">
-                        <thead>
-                            <tr>
-                                <th>Tabaka</th>
-                                <th>Tabaka Büyüklüğü</th>
-                                <th>Seçilen Adet</th>
-                                <th>Seçilen Değerler</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                    <!-- Dinamik tablo eklenecek -->
+                    <div id="dsTableContainer"></div>
                 </div>
-            </section>
-
-            <!-- Veri Seti Örneklemi -->
-            <section class="card result-card" id="section-vso">
-                <h2 class="card-title">
-                    <span class="card-icon">🎯</span>
-                    Veri Seti Örneklemi
-                </h2>
-                <p class="card-description">Veri setinden rastgele seçilen <strong id="vso-count"></strong> birim</p>
-                <div class="table-wrapper">
-                    <table id="table-vso">
-                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Basit Seri -->
-            <section class="card result-card" id="section-bs">
-                <h2 class="card-title">
-                    <span class="card-icon">📈</span>
-                    Basit Seri
-                </h2>
-                <p class="card-description">Verilerin küçükten büyüğe sıralanmış hali</p>
-                <div class="table-wrapper">
-                    <table id="table-bs">
-                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Frekans Serisi -->
-            <section class="card result-card" id="section-fs">
-                <h2 class="card-title">
-                    <span class="card-icon">🔢</span>
-                    Frekans Serisi
-                </h2>
-                <p class="card-description">Her değerin veri setinde kaç kez tekrarlandığı</p>
-                <div class="table-wrapper">
-                    <table id="table-fs">
-                        <thead><tr><th>Değer (xᵢ)</th><th>Frekans (fᵢ)</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Frekans Tablosu -->
-            <section class="card result-card" id="section-ft">
-                <h2 class="card-title">
-                    <span class="card-icon">📋</span>
-                    Frekans Tablosu
-                </h2>
-                <p class="card-description">Gruplandırılmış frekans dağılım tablosu</p>
-                <div class="table-wrapper">
-                    <table id="table-ft">
-                        <thead>
-                            <tr>
-                                <th>Sınıf Aralığı</th>
-                                <th>Frekans (fᵢ)</th>
-                                <th>Bağıl Frekans (fᵢ/n)</th>
-                                <th>Kümülatif Frekans</th>
-                                <th>Kümülatif Bağıl Frekans</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </section>
-
-        </div>
+            </div>
+        </section>
+        
     </div>
 
     <footer class="footer">

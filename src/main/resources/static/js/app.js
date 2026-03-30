@@ -1,396 +1,333 @@
 /**
- * İstatistik Hesaplama - Frontend Logic
+ * İstatistik Hesaplama - Frontend Logic (Módüler Sistem)
  */
 
-// ============================
-// Real-time Input Filtering
-// ============================
-document.addEventListener('DOMContentLoaded', function () {
-    const dataInput = document.getElementById('dataInput');
-
-    // Data textarea: only allow digits, commas, dots, spaces, semicolons, minus, newlines
-    dataInput.addEventListener('input', function () {
-        const cursorPos = this.selectionStart;
-        const before = this.value;
-        this.value = this.value.replace(/[^0-9.,;\s\-]/g, '');
-        if (this.value !== before) {
-            this.selectionStart = this.selectionEnd = Math.max(0, cursorPos - 1);
-            shakeField(this);
-        }
-        clearFieldError(this);
-    });
-
-    dataInput.addEventListener('paste', function (e) {
-        e.preventDefault();
-        const text = (e.clipboardData || window.clipboardData).getData('text');
-        const cleaned = text.replace(/[^0-9.,;\s\-]/g, '');
-        document.execCommand('insertText', false, cleaned);
-    });
-
-    // Integer-only number inputs: block non-numeric keys
-    const integerInputs = [
-        document.getElementById('populationSize'),
-        document.getElementById('sampleSize'),
-        document.getElementById('classCount'),
-        document.getElementById('strataCount')
-    ];
-
-    integerInputs.forEach(input => {
-        input.addEventListener('keydown', function (e) {
-            const allowed = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
-                'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-            if (allowed.includes(e.key)) return;
-            if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
-            if (!/^[0-9]$/.test(e.key)) {
-                e.preventDefault();
-                shakeField(this);
-            }
-        });
-
-        input.addEventListener('input', function () {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            clearFieldError(this);
-        });
-
-        input.addEventListener('paste', function (e) {
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text');
-            const cleaned = text.replace(/[^0-9]/g, '');
-            document.execCommand('insertText', false, cleaned);
-        });
-    });
-
-    // Min/Max inputs: allow decimal numbers (digits, dot, minus)
-    const decimalInputs = [
-        document.getElementById('minValue'),
-        document.getElementById('maxValue')
-    ];
-
-    decimalInputs.forEach(input => {
-        input.addEventListener('input', function () {
-            clearFieldError(this);
-        });
-    });
-});
-
-// ============================
-// Field Error Helpers
-// ============================
-function markFieldError(el) {
-    el.classList.add('field-error');
-    shakeField(el);
+// Helper: Hata göster
+function showError(errorId, msg, inputElements=[]) {
+    const errorDiv = document.getElementById(errorId);
+    if(errorDiv) {
+        errorDiv.textContent = msg;
+        errorDiv.style.display = 'block';
+    }
+    inputElements.forEach(el => { if(el) markFieldError(el); });
 }
 
-function clearFieldError(el) {
-    el.classList.remove('field-error');
+function hideError(errorId, inputElements=[]) {
+    const errorDiv = document.getElementById(errorId);
+    if(errorDiv) errorDiv.style.display = 'none';
+    inputElements.forEach(el => { if(el) clearFieldError(el); });
 }
 
+function markFieldError(el) { el.classList.add('field-error'); shakeField(el); }
+function clearFieldError(el) { el.classList.remove('field-error'); }
 function shakeField(el) {
     el.classList.remove('shake');
-    // Force reflow to restart animation
     void el.offsetWidth;
     el.classList.add('shake');
     el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
 }
 
-// ============================
-// Main Calculation
-// ============================
-async function calculate() {
-    const btn = document.getElementById('calculateBtn');
-    const errorDiv = document.getElementById('errorMessage');
-    const resultsDiv = document.getElementById('results');
+function gVal(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+}
 
-    // Input elements
-    const minValueInput = document.getElementById('minValue');
-    const maxValueInput = document.getElementById('maxValue');
-    const populationSizeInput = document.getElementById('populationSize');
-    const sampleSizeInput = document.getElementById('sampleSize');
-    const dataInput = document.getElementById('dataInput');
-    const dataSampleSizeInput = document.getElementById('dataSampleSize');
-
-    // Reset
-    errorDiv.style.display = 'none';
-    resultsDiv.style.display = 'none';
-    [minValueInput, maxValueInput, populationSizeInput, sampleSizeInput, dataInput, dataSampleSizeInput].forEach(clearFieldError);
-
-    // Read values
-    const minVal = minValueInput.value.trim();
-    const maxVal = maxValueInput.value.trim();
-    const popSizeVal = populationSizeInput.value.trim();
-    const sampleSizeVal = sampleSizeInput.value.trim();
-    const rawData = dataInput.value.trim();
-    const dataSampleSizeVal = dataSampleSizeInput ? dataSampleSizeInput.value.trim() : '';
-    const classCountVal = document.getElementById('classCount').value.trim();
-    const strataCountVal = document.getElementById('strataCount').value.trim();
-
-    // Determine which sections have data
-    const hasSamplingParams = minVal || maxVal || popSizeVal || sampleSizeVal;
-    const hasDataset = !!rawData;
-
-    // Must fill at least one section
-    if (!hasSamplingParams && !hasDataset) {
-        showError('Lütfen örneklem parametrelerini veya veri setini giriniz.');
-        markFieldError(minValueInput);
-        minValueInput.focus();
-        return;
-    }
-
-    // Build request
-    const request = {};
-
-    // Validate sampling parameters if provided
-    if (hasSamplingParams) {
-        // All 4 fields required
-        if (!minVal) {
-            showError('Lütfen min değer giriniz.');
-            markFieldError(minValueInput);
-            minValueInput.focus();
-            return;
-        }
-        if (!maxVal) {
-            showError('Lütfen max değer giriniz.');
-            markFieldError(maxValueInput);
-            maxValueInput.focus();
-            return;
-        }
-        if (!popSizeVal) {
-            showError('Lütfen Büyük N (popülasyon büyüklüğü) giriniz.');
-            markFieldError(populationSizeInput);
-            populationSizeInput.focus();
-            return;
-        }
-        if (!sampleSizeVal) {
-            showError('Lütfen Küçük n (örneklem büyüklüğü) giriniz.');
-            markFieldError(sampleSizeInput);
-            sampleSizeInput.focus();
-            return;
-        }
-
-        const minValue = parseFloat(minVal);
-        const maxValue = parseFloat(maxVal);
-        const populationSize = parseInt(popSizeVal);
-        const sampleSize = parseInt(sampleSizeVal);
-
-        if (isNaN(minValue)) {
-            showError('Min değer geçerli bir sayı olmalıdır.');
-            markFieldError(minValueInput);
-            minValueInput.focus();
-            return;
-        }
-        if (isNaN(maxValue)) {
-            showError('Max değer geçerli bir sayı olmalıdır.');
-            markFieldError(maxValueInput);
-            maxValueInput.focus();
-            return;
-        }
-        if (minValue >= maxValue) {
-            showError('Min değer, max değerden küçük olmalıdır.');
-            markFieldError(minValueInput);
-            markFieldError(maxValueInput);
-            minValueInput.focus();
-            return;
-        }
-        if (isNaN(populationSize) || populationSize <= 0) {
-            showError('Büyük N pozitif bir tam sayı olmalıdır.');
-            markFieldError(populationSizeInput);
-            populationSizeInput.focus();
-            return;
-        }
-        if (isNaN(sampleSize) || sampleSize <= 0) {
-            showError('Küçük n pozitif bir tam sayı olmalıdır.');
-            markFieldError(sampleSizeInput);
-            sampleSizeInput.focus();
-            return;
-        }
-        if (sampleSize > populationSize) {
-            showError(`Küçük n (${sampleSize}), Büyük N'den (${populationSize}) büyük olamaz.`);
-            markFieldError(sampleSizeInput);
-            sampleSizeInput.focus();
-            return;
-        }
-
-        request.minValue = minValue;
-        request.maxValue = maxValue;
-        request.populationSize = populationSize;
-        request.sampleSize = sampleSize;
-        request.strataCount = strataCountVal ? parseInt(strataCountVal) : null;
-    } else {
-        // sampleSize still needed for backend (set to 0, won't be used for sampling)
-        request.sampleSize = 0;
-    }
-
-    // Validate dataset if provided
-    if (hasDataset) {
-        const data = rawData.split(/[,;\s]+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 0)
-            .map(s => parseFloat(s));
-
-        if (data.length === 0 || data.some(isNaN)) {
-            showError('Veri setinde geçersiz değer(ler) var. Lütfen sadece sayı giriniz.');
-            markFieldError(dataInput);
-            dataInput.focus();
-            return;
-        }
-
-        request.data = data;
-        request.classCount = classCountVal ? parseInt(classCountVal) : null;
-        
-        if (dataSampleSizeVal) {
-            const dataSampleSize = parseInt(dataSampleSizeVal);
-            if (isNaN(dataSampleSize) || dataSampleSize <= 0) {
-                showError('Veri seti örneklem büyüklüğü pozitif bir tam sayı olmalıdır.');
-                markFieldError(dataSampleSizeInput);
-                dataSampleSizeInput.focus();
-                return;
-            }
-            if (dataSampleSize > data.length) {
-                showError(`Örneklem büyüklüğü (${dataSampleSize}), veri sayısından (${data.length}) büyük olamaz.`);
-                markFieldError(dataSampleSizeInput);
-                dataSampleSizeInput.focus();
-                return;
-            }
-            request.dataSampleSize = dataSampleSize;
-        } else {
-            request.dataSampleSize = null;
-        }
-    }
-
-    // Loading state
-    btn.classList.add('loading');
-    btn.querySelector('.btn-text').textContent = 'Hesaplanıyor...';
+// ----------------------------------------------------
+// API REQUEST HELPER
+// ----------------------------------------------------
+async function sendCalcRequest(requestBody, btnEl) {
+    const origText = btnEl.textContent;
+    btnEl.classList.add('loading');
+    btnEl.textContent = 'Hesaplanıyor...';
 
     try {
         const response = await fetch('/api/calculate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request)
+            body: JSON.stringify(requestBody)
         });
 
         const result = await response.json();
-
         if (!response.ok) {
-            showError(result.error || 'Bir hata oluştu.');
-            return;
+            throw new Error(result.error || 'Bilinmeyen API hatası');
+        }
+        return result;
+    } finally {
+        btnEl.classList.remove('loading');
+        btnEl.textContent = origText;
+    }
+}
+
+// ----------------------------------------------------
+// MODULE 1: Basit Rastgele Örneklem
+// ----------------------------------------------------
+async function calcBasitRastgele(btn) {
+    const minEl = document.getElementById('brMin');
+    const maxEl = document.getElementById('brMax');
+    const nEl = document.getElementById('brN');
+    const resultDiv = document.getElementById('brResult');
+    
+    hideError('brError', [minEl, maxEl, nEl]);
+    resultDiv.style.display = 'none';
+
+    if(!gVal('brMin') || !gVal('brMax') || !gVal('brN')) {
+        return showError('brError', 'Min, Max ve n değerlerini doldurunuz.', [minEl, maxEl, nEl]);
+    }
+
+    const request = {
+        basRastMin: parseInt(gVal('brMin')),
+        basRastMax: parseInt(gVal('brMax')),
+        basRastN: parseInt(gVal('brN')) 
+    };
+
+    if (isNaN(request.basRastMin) || isNaN(request.basRastMax) || isNaN(request.basRastN)){
+         return showError('brError', 'Geçerli tam sayılar giriniz.', [minEl, maxEl, nEl]);
+    }
+    if (request.basRastMin >= request.basRastMax) {
+        return showError('brError', 'Min değer Max değerden küçük olmalıdır.', [minEl, maxEl]);
+    }
+
+    try {
+        const data = await sendCalcRequest(request, btn);
+        if(data.basitRastgeleOrneklem) {
+            document.getElementById('brCount').textContent = data.basitRastgeleOrneklem.length;
+            renderSimpleTable('brTable', data.basitRastgeleOrneklem);
+            resultDiv.style.display = 'block';
+        }
+    } catch (e) {
+        showError('brError', e.message);
+    }
+}
+
+// ----------------------------------------------------
+// MODULE 2: Sistematik Örneklem
+// ----------------------------------------------------
+async function calcSistematik(btn) {
+    const elList = [document.getElementById('sysBuyukN'), document.getElementById('sysKucukN')];
+    const resultDiv = document.getElementById('sysResult');
+
+    hideError('sysError', elList);
+    resultDiv.style.display = 'none';
+
+    if(elList.some(e => !e.value.trim())) {
+        return showError('sysError', 'Lütfen tüm alanları doldurunuz.', elList.filter(e => !e.value.trim()));
+    }
+
+    const request = {
+        sisBuyukN: parseInt(gVal('sysBuyukN')),
+        sisKucukN: parseInt(gVal('sysKucukN'))
+    };
+
+    if(request.sisBuyukN <= 0 || request.sisKucukN <= 0 || request.sisKucukN > request.sisBuyukN) {
+        return showError('sysError', 'Geçersiz popülasyon/örneklem büyüklüğü.', [elList[0], elList[1]]);
+    }
+
+    try {
+        const data = await sendCalcRequest(request, btn);
+        if(data.sistematikOrneklem) {
+            document.getElementById('sysK').textContent = Math.floor(request.sisBuyukN / request.sisKucukN);
+            renderSimpleTable('sysTable', data.sistematikOrneklem);
+            resultDiv.style.display = 'block';
+        }
+    } catch(e) {
+        showError('sysError', e.message);
+    }
+}
+
+// ----------------------------------------------------
+// MODULE 3: Tabakalı Örneklem
+// ----------------------------------------------------
+
+function generateStrataInputs() {
+    const container = document.getElementById('strataRatiosContainer');
+    const grid = document.getElementById('strataInputsGrid');
+    const val = parseInt(document.getElementById('tabSayisi').value);
+    
+    // Clear and hide if invalid
+    if (isNaN(val) || val < 1) {
+        grid.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+    
+    // Cap to 100 visually so browser doesn't hang, max is already set to 30 in HTML
+    const count = Math.min(val, 100);
+    
+    let html = '';
+    for(let i=1; i<=count; i++) {
+        html += `
+        <div class="form-group" style="margin: 0; min-width: 90px;">
+            <label for="tabO_${i}" style="font-size: 0.85rem;">${i}. Tabaka Oranı</label>
+            <input type="number" id="tabO_${i}" class="dyn-tab-oran" placeholder="Örn: 50" min="0" step="any" oninput="clearFieldError(this)" style="padding: 0.6rem;">
+        </div>`;
+    }
+    
+    grid.innerHTML = html;
+    container.style.display = 'block';
+}
+
+async function calcTabakali(btn) {
+    const tabSayisiEl = document.getElementById('tabSayisi');
+    const elList = [document.getElementById('tabMin'), document.getElementById('tabMax'), 
+                    document.getElementById('tabBuyukN'), document.getElementById('tabKucukN'),
+                    tabSayisiEl];
+    const resultDiv = document.getElementById('tabResult');
+
+    hideError('tabError', elList);
+    resultDiv.style.display = 'none';
+
+    if(elList.some(e => !e || !e.value.trim())) {
+        return showError('tabError', 'Lütfen Tabaka Sayısı dahil tüm alanları doldurunuz.', elList.filter(e => !e || !e.value.trim()));
+    }
+    
+    const count = parseInt(tabSayisiEl.value);
+    let ratioList = [];
+    let ratioEls = [];
+    for(let i = 1; i <= count; i++) {
+        const oEl = document.getElementById('tabO_' + i);
+        if(oEl) {
+            ratioEls.push(oEl);
+            if(!oEl.value.trim()) {
+                return showError('tabError', 'Tüm tabaka oranları doldurulmalıdır.', ratioEls);
+            }
+            ratioList.push(oEl.value.trim());
+        }
+    }
+    
+    if(ratioList.length === 0) {
+        return showError('tabError', 'En az 1 tabaka ve oranı girilmelidir.', [tabSayisiEl]);
+    }
+
+    const request = {
+        tabMin: parseFloat(gVal('tabMin')),
+        tabMax: parseFloat(gVal('tabMax')),
+        tabBuyukN: parseInt(gVal('tabBuyukN')),
+        tabKucukN: parseInt(gVal('tabKucukN')),
+        tabOranlar: ratioList.join(',')
+    };
+
+    if(request.tabMin >= request.tabMax) return showError('tabError', 'Min < Max olmalı.');
+    if(request.tabBuyukN <= 0 || request.tabKucukN <= 0 || request.tabKucukN > request.tabBuyukN) {
+        return showError('tabError', 'Geçersiz popülasyon boyutları büyük N > küçük N olmalı.');
+    }
+
+    try {
+        const data = await sendCalcRequest(request, btn);
+        if(data.tabakaliOrneklem) {
+            renderTabakaliTable('tabTable', data.tabakaliOrneklem);
+            resultDiv.style.display = 'block';
+        }
+    } catch(e) {
+        showError('tabError', e.message);
+    }
+}
+
+// ----------------------------------------------------
+// MODULE 4: Dataset
+// ----------------------------------------------------
+async function calcData(type, btn) {
+    const dsInput = document.getElementById('dsInput');
+    const resultDiv = document.getElementById('dsResult');
+    const container = document.getElementById('dsTableContainer');
+    hideError('dsError', [dsInput]);
+    resultDiv.style.display = 'none';
+    container.innerHTML = '';
+
+    const rawData = gVal('dsInput');
+    if(!rawData) {
+        return showError('dsError', 'Lütfen veri seti giriniz.', [dsInput]);
+    }
+
+    const numbers = rawData.split(/[,;\s]+/).filter(s => s.trim().length > 0).map(s => parseFloat(s));
+    if (numbers.length === 0 || numbers.some(isNaN)) {
+        return showError('dsError', 'Veri setinde geçersiz sayılar var.', [dsInput]);
+    }
+
+    const request = { data: numbers };
+
+    if(type === 'frekansTablosu') {
+        const cl = gVal('dsClassCount');
+        if(cl) request.classCount = parseInt(cl);
+    } else if(type === 'veriOrneklemi') {
+        const dsN = gVal('dsSampleN');
+        if(!dsN) return showError('dsError', 'Örneklem çekmek için, "Örneklem (n)" alanını doldurun.', [document.getElementById('dsSampleN')]);
+        
+        const nn = parseInt(dsN);
+        if(isNaN(nn) || nn <= 0 || nn > numbers.length) {
+            return showError('dsError', 'Geçersiz örneklem büyüklüğü (Veri setinden büyük olamaz).');
+        }
+        request.dataSampleSize = nn;
+    }
+
+    try {
+        const responseData = await sendCalcRequest(request, btn);
+
+        const buildTable = (html) => `<table style="width:100%; text-align:left; border-collapse:collapse;">${html}</table>`;
+        const fmt = (v) => Number.isInteger(v) ? v.toString() : parseFloat(v.toFixed(4)).toString();
+
+        let htmlOut = "";
+
+        if(type === 'basitSeri' && responseData.basitSeri) {
+            document.getElementById('dsTitle').textContent = `Basit Seri (${responseData.basitSeri.length} eleman)`;
+            let rows = responseData.basitSeri.map((v, i) => `<tr><td style="padding:8px; border-bottom:1px solid #444">${i+1}</td><td style="padding:8px; border-bottom:1px solid #444">${v}</td></tr>`).join('');
+            htmlOut = buildTable(`<thead><tr><th style="padding:8px; border-bottom:1px solid #555">Sıra</th><th style="padding:8px; border-bottom:1px solid #555">Değer</th></tr></thead><tbody>${rows}</tbody>`);
+        } 
+        else if (type === 'frekansSerisi' && responseData.frekansSeries) {
+            document.getElementById('dsTitle').textContent = `Frekans Serisi`;
+            const entries = Object.entries(responseData.frekansSeries).map(([k, v]) => [parseFloat(k), v]).sort((a,b) => a[0]-b[0]);
+            let rows = entries.map(([v, count]) => `<tr><td style="padding:8px; border-bottom:1px solid #444">${v}</td><td style="padding:8px; border-bottom:1px solid #444">${count}</td></tr>`).join('');
+            htmlOut = buildTable(`<thead><tr><th style="padding:8px; border-bottom:1px solid #555">Değer (xᵢ)</th><th style="padding:8px; border-bottom:1px solid #555">Frekans (fᵢ)</th></tr></thead><tbody>${rows}</tbody>`);
+        }
+        else if (type === 'frekansTablosu' && responseData.frekansTablosu) {
+            document.getElementById('dsTitle').textContent = `Frekans Tablosu (${responseData.frekansTablosu.length} sınıf)`;
+            let rows = responseData.frekansTablosu.map(r => `
+                <tr>
+                    <td style="padding:8px; border-bottom:1px solid #444">${r.classInterval}</td>
+                    <td style="padding:8px; border-bottom:1px solid #444">${fmt(r.altSinir)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #444">${fmt(r.ustSinir)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #444">${fmt(r.ortaNokta)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #444">${r.frequency}</td>
+                    <td style="padding:8px; border-bottom:1px solid #444">${(r.relativeFrequency * 100).toFixed(2)}%</td>
+                    <td style="padding:8px; border-bottom:1px solid #444">${r.cumulativeFrequency}</td>
+                    <td style="padding:8px; border-bottom:1px solid #444">${(r.cumulativeRelativeFrequency * 100).toFixed(2)}%</td>
+                </tr>
+            `).join('');
+            htmlOut = buildTable(`<thead><tr>
+                <th style="padding:8px; border-bottom:1px solid #555">Sınıf Limitleri</th>
+                <th style="padding:8px; border-bottom:1px solid #555">Alt Sınır</th>
+                <th style="padding:8px; border-bottom:1px solid #555">Üst Sınır</th>
+                <th style="padding:8px; border-bottom:1px solid #555">Orta Nokta (yₖ)</th>
+                <th style="padding:8px; border-bottom:1px solid #555">Frekans (fᵢ)</th>
+                <th style="padding:8px; border-bottom:1px solid #555">Bağıl (%)</th>
+                <th style="padding:8px; border-bottom:1px solid #555">Eklemeli Frekans</th>
+                <th style="padding:8px; border-bottom:1px solid #555">Küm. Bağıl (%)</th>
+            </tr></thead><tbody>${rows}</tbody>`);
+        }
+        else if (type === 'veriOrneklemi' && responseData.veriSetiOrneklem) {
+            document.getElementById('dsTitle').textContent = `Rastgele Seçilen Örneklem (${responseData.veriSetiOrneklem.length} birim)`;
+            let rows = responseData.veriSetiOrneklem.map((v, i) => `<tr><td style="padding:8px; border-bottom:1px solid #444">${i+1}</td><td style="padding:8px; border-bottom:1px solid #444">${v}</td></tr>`).join('');
+            htmlOut = buildTable(`<thead><tr><th style="padding:8px; border-bottom:1px solid #555">Sıra</th><th style="padding:8px; border-bottom:1px solid #555">Değer</th></tr></thead><tbody>${rows}</tbody>`);
         }
 
-        renderResults(result, request);
-    } catch (err) {
-        showError('Sunucuya bağlanılamadı. Lütfen uygulamanın çalıştığından emin olun.');
-    } finally {
-        btn.classList.remove('loading');
-        btn.querySelector('.btn-text').textContent = 'Hesapla';
+        container.innerHTML = htmlOut;
+        resultDiv.style.display = 'block';
+
+    } catch(e) {
+        showError('dsError', e.message);
     }
 }
 
-function showError(message) {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-}
-
-function renderResults(data, request) {
-    const resultsDiv = document.getElementById('results');
-
-    // Show/hide sampling sections based on availability
-    const hasSampling = data.uretilenPopulasyon && data.uretilenPopulasyon.length > 0;
-    const hasDataset = data.basitSeri && data.basitSeri.length > 0;
-
-    // Üretilen Popülasyon
-    const popSection = document.getElementById('section-pop');
-    if (hasSampling) {
-        popSection.style.display = '';
-        document.getElementById('pop-count').textContent = data.uretilenPopulasyon.length;
-        renderSimpleTable('table-pop', data.uretilenPopulasyon);
-    } else {
-        popSection.style.display = 'none';
-    }
-
-    // Basit Rastgele Örneklem
-    const broSection = document.getElementById('section-bro');
-    if (hasSampling && data.basitRastgeleOrneklem) {
-        broSection.style.display = '';
-        document.getElementById('bro-count').textContent = data.basitRastgeleOrneklem.length;
-        renderSimpleTable('table-bro', data.basitRastgeleOrneklem);
-    } else {
-        broSection.style.display = 'none';
-    }
-
-    // Sistematik Örneklem
-    const soSection = document.getElementById('section-so');
-    if (hasSampling && data.sistematikOrneklem) {
-        soSection.style.display = '';
-        const k = Math.floor(request.populationSize / request.sampleSize);
-        document.getElementById('so-k').textContent = k;
-        renderSimpleTable('table-so', data.sistematikOrneklem);
-    } else {
-        soSection.style.display = 'none';
-    }
-
-    // Tabakalı Örneklem
-    const toSection = document.getElementById('section-to');
-    if (hasSampling && data.tabakaliOrneklem) {
-        toSection.style.display = '';
-        renderStratifiedTable('table-to', data.tabakaliOrneklem);
-    } else {
-        toSection.style.display = 'none';
-    }
-
-    // Veri Seti Örneklemi
-    const vsoSection = document.getElementById('section-vso');
-    if (hasDataset && data.veriSetiOrneklem) {
-        vsoSection.style.display = '';
-        document.getElementById('vso-count').textContent = data.veriSetiOrneklem.length;
-        renderSimpleTable('table-vso', data.veriSetiOrneklem);
-    } else {
-        vsoSection.style.display = 'none';
-    }
-
-    // Basit Seri
-    const bsSection = document.getElementById('section-bs');
-    if (hasDataset) {
-        bsSection.style.display = '';
-        renderSimpleTable('table-bs', data.basitSeri);
-    } else {
-        bsSection.style.display = 'none';
-    }
-
-    // Frekans Serisi
-    const fsSection = document.getElementById('section-fs');
-    if (hasDataset && data.frekansSeries) {
-        fsSection.style.display = '';
-        renderFrequencySeries('table-fs', data.frekansSeries);
-    } else {
-        fsSection.style.display = 'none';
-    }
-
-    // Frekans Tablosu
-    const ftSection = document.getElementById('section-ft');
-    if (hasDataset && data.frekansTablosu) {
-        ftSection.style.display = '';
-        renderFrequencyTable('table-ft', data.frekansTablosu);
-    } else {
-        ftSection.style.display = 'none';
-    }
-
-    // Show with animation
-    resultsDiv.style.display = 'block';
-
-    // Scroll to first visible result
-    setTimeout(() => {
-        const firstVisible = hasSampling ? 'section-pop' : 'section-bs';
-        document.getElementById(firstVisible).scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-        });
-    }, 100);
+// ----------------------------------------------------
+// UI Render Helpers
+// ----------------------------------------------------
+function formatValue(val) {
+    if (Number.isInteger(val)) return val.toString();
+    return parseFloat(val.toFixed(4)).toString();
 }
 
 function renderSimpleTable(tableId, values) {
     const tbody = document.querySelector(`#${tableId} tbody`);
     tbody.innerHTML = '';
-
     values.forEach((val, index) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${index + 1}</td><td>${formatValue(val)}</td>`;
@@ -398,50 +335,9 @@ function renderSimpleTable(tableId, values) {
     });
 }
 
-function renderFrequencySeries(tableId, freqMap) {
+function renderTabakaliTable(tableId, rows) {
     const tbody = document.querySelector(`#${tableId} tbody`);
     tbody.innerHTML = '';
-
-    // freqMap is an object { value: count }
-    const entries = Object.entries(freqMap)
-        .map(([k, v]) => [parseFloat(k), v])
-        .sort((a, b) => a[0] - b[0]);
-
-    entries.forEach(([value, count]) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${formatValue(value)}</td><td>${count}</td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-function renderFrequencyTable(tableId, rows) {
-    const tbody = document.querySelector(`#${tableId} tbody`);
-    tbody.innerHTML = '';
-
-    rows.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${row.classInterval}</td>
-            <td>${row.frequency}</td>
-            <td>${(row.relativeFrequency * 100).toFixed(2)}%</td>
-            <td>${row.cumulativeFrequency}</td>
-            <td>${(row.cumulativeRelativeFrequency * 100).toFixed(2)}%</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function formatValue(val) {
-    if (Number.isInteger(val)) {
-        return val.toString();
-    }
-    return parseFloat(val.toFixed(4)).toString();
-}
-
-function renderStratifiedTable(tableId, rows) {
-    const tbody = document.querySelector(`#${tableId} tbody`);
-    tbody.innerHTML = '';
-
     rows.forEach(row => {
         const tr = document.createElement('tr');
         const values = row.secilenDegerler.map(v => formatValue(v)).join(', ');
@@ -455,9 +351,17 @@ function renderStratifiedTable(tableId, rows) {
     });
 }
 
-// Allow Enter key to trigger calculation
-document.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-        calculate();
-    }
+// ----------------------------------------------------
+// Initialization Filter Events
+// ----------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    // Sadece numeric giriş filtreleri için
+    const intKeys = ['brN', 'sysBuyukN', 'sysKucukN', 'tabBuyukN', 'tabKucukN', 'tabSayisi', 'dsSampleN', 'dsClassCount'];
+    intKeys.forEach(id => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.addEventListener('input', function() {
+             this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    });
 });
