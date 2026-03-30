@@ -11,34 +11,86 @@ import java.util.*;
 @Service
 public class StatisticsService {
 
-    // Ana hesaplama metodu - tüm istatistiksel işlemleri çalıştırır
+    //tüm istatistiksel işlemleri çalıştırır
     public StatisticsResponse hesapla(DataRequest istek) {
         List<Double> veriler = istek.getData();
         int orneklemBuyuklugu = istek.getSampleSize();
 
-        // Veri kontrolü
-        if (veriler == null || veriler.isEmpty()) {
-            throw new IllegalArgumentException("Veri listesi boş olamaz.");
-        }
-        if (orneklemBuyuklugu <= 0 || orneklemBuyuklugu > veriler.size()) {
-            throw new IllegalArgumentException("Örneklem büyüklüğü 0'dan büyük ve veri sayısından küçük veya eşit olmalıdır.");
+        StatisticsResponse sonuc = new StatisticsResponse();
+
+        // ======================================================
+        // BRO, Sistematik, Tabakalı: min/max/N ile popülasyon üret
+        // ======================================================
+        Double minDeger = istek.getMinValue();
+        Double maxDeger = istek.getMaxValue();
+        Integer populasyonBuyuklugu = istek.getPopulationSize();
+
+        if (minDeger != null && maxDeger != null && populasyonBuyuklugu != null) {
+            // Validasyon
+            if (minDeger >= maxDeger) {
+                throw new IllegalArgumentException("Min değer, max değerden küçük olmalıdır.");
+            }
+            if (populasyonBuyuklugu <= 0) {
+                throw new IllegalArgumentException("Popülasyon büyüklüğü (N) 0'dan büyük olmalıdır.");
+            }
+            if (orneklemBuyuklugu <= 0 || orneklemBuyuklugu > populasyonBuyuklugu) {
+                throw new IllegalArgumentException("Örneklem büyüklüğü (n) 0'dan büyük ve N'den küçük veya eşit olmalıdır.");
+            }
+
+            // Min-Max arası N adet rastgele double sayı üret
+            List<Double> populasyon = populasyonUret(minDeger, maxDeger, populasyonBuyuklugu);
+
+            // Üretilen popülasyonu sonuca ekle (sıralı göster)
+            List<Double> siraliPopulasyon = new ArrayList<>(populasyon);
+            Collections.sort(siraliPopulasyon);
+            sonuc.setUretilenPopulasyon(siraliPopulasyon);
+
+            // BRO, Sistematik ve Tabakalı: üretilen popülasyondan örneklem al
+            sonuc.setBasitRastgeleOrneklem(basitRastgeleOrneklemOlustur(populasyon, orneklemBuyuklugu));
+            sonuc.setSistematikOrneklem(sistematikOrneklemOlustur(populasyon, orneklemBuyuklugu));
+            sonuc.setTabakaliOrneklem(tabakaliOrneklemOlustur(populasyon, orneklemBuyuklugu, istek.getStrataCount()));
         }
 
-        // Tüm sonuçları hesapla
-        StatisticsResponse sonuc = new StatisticsResponse();
-        sonuc.setBasitRastgeleOrneklem(basitRastgeleOrneklemOlustur(veriler, orneklemBuyuklugu));
-        sonuc.setSistematikOrneklem(sistematikOrneklemOlustur(veriler, orneklemBuyuklugu));
-        sonuc.setBasitSeri(basitSeriOlustur(veriler));
-        sonuc.setFrekansSeries(frekansSerisiOlustur(veriler));
-        sonuc.setFrekansTablosu(frekansTablosuOlustur(veriler, istek.getClassCount()));
-        sonuc.setTabakaliOrneklem(tabakaliOrneklemOlustur(veriler, orneklemBuyuklugu, istek.getStrataCount()));
+        // ======================================================
+        // Basit Seri, Frekans Serisi, Frekans Tablosu: veri setinden
+        // ======================================================
+        if (veriler != null && !veriler.isEmpty()) {
+            sonuc.setBasitSeri(basitSeriOlustur(veriler));
+            sonuc.setFrekansSeries(frekansSerisiOlustur(veriler));
+            sonuc.setFrekansTablosu(frekansTablosuOlustur(veriler, istek.getClassCount()));
+
+            // Veri setinden örneklem seçimi (dataSampleSize verilmişse)
+            Integer veriOrneklemBuyuklugu = istek.getDataSampleSize();
+            if (veriOrneklemBuyuklugu != null && veriOrneklemBuyuklugu > 0) {
+                if (veriOrneklemBuyuklugu > veriler.size()) {
+                    throw new IllegalArgumentException("Veri seti örneklem büyüklüğü (n), veri sayısından (" + veriler.size() + ") büyük olamaz.");
+                }
+                sonuc.setVeriSetiOrneklem(basitRastgeleOrneklemOlustur(veriler, veriOrneklemBuyuklugu));
+            }
+        }
 
         return sonuc;
     }
 
+    /**
+     * Min-Max arasında N adet rastgele double sayı üretir.
+     * Sayılar 2 ondalık basamağa yuvarlanır.
+     */
+    private List<Double> populasyonUret(double min, double max, int N) {
+        Random rastgele = new Random();
+        List<Double> populasyon = new ArrayList<>();
+        for (int i = 0; i < N; i++) {
+            double deger = min + (max - min) * rastgele.nextDouble();
+            // 2 ondalık basamağa yuvarla
+            deger = Math.round(deger * 100.0) / 100.0;
+            populasyon.add(deger);
+        }
+        return populasyon;
+    }
+
     
     // 1. BASİT RASTGELE ÖRNEKLEM
-    // Veri setinden rastgele n tane eleman seçer
+    // Popülasyondan rastgele n tane eleman seçer
     
     private List<Double> basitRastgeleOrneklemOlustur(List<Double> veriler, int n) {
         // Tüm indeksleri bir listeye koy
@@ -47,7 +99,7 @@ public class StatisticsService {
             indeksler.add(i);
         }
 
-        // İndeksleri karıştır (rastgele sırala)
+        // İndeksleri karıştır 
         Collections.shuffle(indeksler);
 
         // İlk n indeksi seç ve sırala
@@ -89,7 +141,7 @@ public class StatisticsService {
 
     
     // 3. BASİT SERİ
-    // Verileri küçükten büyüğe sıralar
+    // Verileri küçükten büyüğe sırala
     
     private List<Double> basitSeriOlustur(List<Double> veriler) {
         List<Double> sirali = new ArrayList<>(veriler);
@@ -99,7 +151,7 @@ public class StatisticsService {
 
     
     // 4. FREKANS SERİSİ
-    // Her değerin kaç kez tekrarlandığını sayar
+    // Her değerin kaç kez tekrarlandığı
 
     private Map<Double, Integer> frekansSerisiOlustur(List<Double> veriler) {
         // TreeMap kullanarak değerleri sıralı tutar
@@ -136,8 +188,8 @@ public class StatisticsService {
 
         // Sınıf genişliğini hesapla
         double aralik = enBuyuk - enKucuk;
-        double sinifGenisligi = Math.ceil(aralik / sinifSayisi);
-        if (sinifGenisligi == 0) sinifGenisligi = 1;
+        double sinifGenisligi = aralik / sinifSayisi;
+        if (sinifGenisligi == 0) sinifGenisligi = 1.0;
 
         // Her sınıf aralığı için frekansları hesapla
         List<FrequencyRow> satirlar = new ArrayList<>();
@@ -151,8 +203,8 @@ public class StatisticsService {
             int frekans = 0;
             for (Double deger : veriler) {
                 if (i == sinifSayisi - 1) {
-                    // Son sınıf üst sınırı dahil eder
-                    if (deger >= altSinir && deger <= ustSinir) frekans++;
+                    // Son sınıf üst sınırı dahil eder (kayan nokta hassasiyeti için küçük bir tolerans payı eklendi)
+                    if (deger >= altSinir && deger <= ustSinir + 1e-9) frekans++;
                 } else {
                     if (deger >= altSinir && deger < ustSinir) frekans++;
                 }
@@ -178,8 +230,8 @@ public class StatisticsService {
 
     
     // 6. TABAKALI ÖRNEKLEM
-    // Veriyi tabakalara ayırıp her tabakadan
-    // oransal (proportional) seçim yapar
+    // veriyi tabakalara ayırıp her tabakadan
+    // oransal  seçim 
     
     private List<StratifiedRow> tabakaliOrneklemOlustur(List<Double> veriler, int orneklemBuyuklugu, Integer tabakaSayisiParametre) {
         // Adım 1: Verileri sırala
@@ -227,7 +279,7 @@ public class StatisticsService {
                 secilenAdet = (int) Math.round(oran * orneklemBuyuklugu);
             }
 
-            // Sınır kontrolü
+            // Sınır kontrolüd
             secilenAdet = Math.min(secilenAdet, tabaka.size());
             secilenAdet = Math.max(secilenAdet, 0);
 

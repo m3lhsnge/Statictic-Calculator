@@ -2,7 +2,7 @@ package com.istatistik.dto;
 
 import java.util.List;
 
-// Tabakalı örneklemin bir tabakasını temsil eder
+// tabakalı örneklemin bir tabakasını temsil eder
 public class StratifiedRow {
 
     private String tabakaAdi; // Tabaka ismi (örn: "Tabaka 1 (3 - 10)")

@@ -2,22 +2,22 @@
    CSS Variables & Reset
    ============================ */
 :root {
-    --bg-primary: #0f0f1a;
-    --bg-secondary: #1a1a2e;
-    --bg-card: rgba(26, 26, 46, 0.7);
-    --bg-card-hover: rgba(30, 30, 55, 0.85);
-    --border-card: rgba(255, 255, 255, 0.06);
-    --text-primary: #e8e8f0;
-    --text-secondary: #9a9ab0;
-    --text-muted: #6a6a80;
-    --accent-1: #6c63ff;
-    --accent-2: #00d2ff;
-    --accent-3: #a855f7;
-    --gradient-primary: linear-gradient(135deg, #6c63ff 0%, #00d2ff 100%);
-    --gradient-header: linear-gradient(135deg, #6c63ff 0%, #a855f7 50%, #00d2ff 100%);
-    --gradient-btn: linear-gradient(135deg, #6c63ff 0%, #a855f7 100%);
-    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
-    --shadow-glow: 0 0 40px rgba(108, 99, 255, 0.15);
+    --bg-primary: #000000;
+    --bg-secondary: #050505;
+    --bg-card: rgba(10, 10, 10, 0.75);
+    --bg-card-hover: rgba(15, 15, 15, 0.9);
+    --border-card: rgba(255, 255, 255, 0.04);
+    --text-primary: #e0e0e0;
+    --text-secondary: #8a8a9a;
+    --text-muted: #5a5a6a;
+    --accent-1: #e65c00;
+    --accent-2: #e69900;
+    --accent-3: #cc3700;
+    --gradient-primary: linear-gradient(135deg, #e65c00 0%, #e69900 100%);
+    --gradient-header: linear-gradient(135deg, #e65c00 0%, #cc3700 50%, #e69900 100%);
+    --gradient-btn: linear-gradient(135deg, #e65c00 0%, #cc3700 100%);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 40px rgba(230, 92, 0, 0.1);
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 20px;
@@ -62,7 +62,8 @@ body {
 .particle {
     position: absolute;
     border-radius: 50%;
-    opacity: 0.15;
+    opacity: 0.08;
+    filter: blur(60px);
     animation: float 20s infinite ease-in-out;
 }
 
@@ -176,7 +177,7 @@ body {
     background: var(--gradient-primary);
     color: #fff;
     margin-bottom: 20px;
-    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.35);
+    box-shadow: 0 8px 30px rgba(255, 115, 0, 0.35);
     animation: pulse-glow 3s ease-in-out infinite;
 }
 
@@ -184,11 +185,11 @@ body {
 
     0%,
     100% {
-        box-shadow: 0 8px 30px rgba(108, 99, 255, 0.35);
+        box-shadow: 0 8px 30px rgba(255, 115, 0, 0.35);
     }
 
     50% {
-        box-shadow: 0 8px 50px rgba(108, 99, 255, 0.55);
+        box-shadow: 0 8px 50px rgba(255, 115, 0, 0.55);
     }
 }
 
@@ -285,6 +286,14 @@ body {
     grid-template-columns: 1fr 1fr 1fr;
 }
 
+.form-row-4 {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+.form-row-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
 textarea,
 input[type="number"] {
     width: 100%;
@@ -303,8 +312,8 @@ input[type="number"] {
 textarea:focus,
 input[type="number"]:focus {
     border-color: var(--accent-1);
-    background: rgba(108, 99, 255, 0.05);
-    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+    background: rgba(255, 115, 0, 0.05);
+    box-shadow: 0 0 0 3px rgba(255, 115, 0, 0.15);
 }
 
 textarea::placeholder,
@@ -329,19 +338,19 @@ input[type="number"]::placeholder {
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-    box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
+    box-shadow: 0 4px 20px rgba(255, 115, 0, 0.4);
     margin-top: 8px;
 }
 
 .btn-calculate:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 30px rgba(108, 99, 255, 0.55);
+    box-shadow: 0 6px 30px rgba(255, 115, 0, 0.55);
     filter: brightness(1.1);
 }
 
 .btn-calculate:active {
     transform: translateY(0);
-    box-shadow: 0 2px 12px rgba(108, 99, 255, 0.3);
+    box-shadow: 0 2px 12px rgba(255, 115, 0, 0.3);
 }
 
 .btn-calculate.loading {
@@ -454,6 +463,10 @@ input[type="number"]::placeholder {
     animation-delay: 0.6s;
 }
 
+.result-card:nth-child(7) {
+    animation-delay: 0.7s;
+}
+
 @keyframes slideIn {
     from {
         opacity: 0;
@@ -502,7 +515,7 @@ tbody tr {
 }
 
 tbody tr:hover {
-    background: rgba(108, 99, 255, 0.08);
+    background: rgba(255, 115, 0, 0.08);
 }
 
 tbody tr:last-child {
@@ -520,7 +533,7 @@ tbody tr:nth-child(even) {
 }
 
 tbody tr:nth-child(even):hover {
-    background: rgba(108, 99, 255, 0.08);
+    background: rgba(255, 115, 0, 0.08);
 }
 
 /* Special styling for the frequency table */
@@ -548,6 +561,12 @@ tbody tr:nth-child(even):hover {
 /* ============================
    Responsive
    ============================ */
+@media (max-width: 992px) {
+    .form-row-4 {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 20px 12px 40px;
@@ -566,7 +585,10 @@ tbody tr:nth-child(even):hover {
         border-radius: var(--radius-md);
     }
 
-    .form-row {
+    .form-row,
+    .form-row-2,
+    .form-row-3,
+    .form-row-4 {
         grid-template-columns: 1fr;
     }
 
@@ -609,10 +631,10 @@ tbody tr:nth-child(even):hover {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(108, 99, 255, 0.3);
+    background: rgba(255, 115, 0, 0.3);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(108, 99, 255, 0.5);
+    background: rgba(255, 115, 0, 0.5);
 }

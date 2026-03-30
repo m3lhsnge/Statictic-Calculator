@@ -7,8 +7,6 @@
 // ============================
 document.addEventListener('DOMContentLoaded', function () {
     const dataInput = document.getElementById('dataInput');
-    const sampleSizeInput = document.getElementById('sampleSize');
-    const classCountInput = document.getElementById('classCount');
 
     // Data textarea: only allow digits, commas, dots, spaces, semicolons, minus, newlines
     dataInput.addEventListener('input', function () {
@@ -29,16 +27,20 @@ document.addEventListener('DOMContentLoaded', function () {
         document.execCommand('insertText', false, cleaned);
     });
 
-    // Number inputs: block non-numeric keys
-    [sampleSizeInput, classCountInput, document.getElementById('strataCount')].forEach(input => {
+    // Integer-only number inputs: block non-numeric keys
+    const integerInputs = [
+        document.getElementById('populationSize'),
+        document.getElementById('sampleSize'),
+        document.getElementById('classCount'),
+        document.getElementById('strataCount')
+    ];
+
+    integerInputs.forEach(input => {
         input.addEventListener('keydown', function (e) {
-            // Allow: backspace, delete, tab, escape, enter, arrows
             const allowed = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
                 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
             if (allowed.includes(e.key)) return;
-            // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
             if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
-            // Block anything that isn't a digit
             if (!/^[0-9]$/.test(e.key)) {
                 e.preventDefault();
                 shakeField(this);
@@ -55,6 +57,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const text = (e.clipboardData || window.clipboardData).getData('text');
             const cleaned = text.replace(/[^0-9]/g, '');
             document.execCommand('insertText', false, cleaned);
+        });
+    });
+
+    // Min/Max inputs: allow decimal numbers (digits, dot, minus)
+    const decimalInputs = [
+        document.getElementById('minValue'),
+        document.getElementById('maxValue')
+    ];
+
+    decimalInputs.forEach(input => {
+        input.addEventListener('input', function () {
+            clearFieldError(this);
         });
     });
 });
@@ -87,72 +101,161 @@ async function calculate() {
     const errorDiv = document.getElementById('errorMessage');
     const resultsDiv = document.getElementById('results');
 
-    const dataInput = document.getElementById('dataInput');
+    // Input elements
+    const minValueInput = document.getElementById('minValue');
+    const maxValueInput = document.getElementById('maxValue');
+    const populationSizeInput = document.getElementById('populationSize');
     const sampleSizeInput = document.getElementById('sampleSize');
+    const dataInput = document.getElementById('dataInput');
+    const dataSampleSizeInput = document.getElementById('dataSampleSize');
 
     // Reset
     errorDiv.style.display = 'none';
     resultsDiv.style.display = 'none';
-    clearFieldError(dataInput);
-    clearFieldError(sampleSizeInput);
+    [minValueInput, maxValueInput, populationSizeInput, sampleSizeInput, dataInput, dataSampleSizeInput].forEach(clearFieldError);
 
-    // Parse input
-    const rawData = dataInput.value.trim();
+    // Read values
+    const minVal = minValueInput.value.trim();
+    const maxVal = maxValueInput.value.trim();
+    const popSizeVal = populationSizeInput.value.trim();
     const sampleSizeVal = sampleSizeInput.value.trim();
+    const rawData = dataInput.value.trim();
+    const dataSampleSizeVal = dataSampleSizeInput ? dataSampleSizeInput.value.trim() : '';
     const classCountVal = document.getElementById('classCount').value.trim();
-
-    // Validate: empty data
-    if (!rawData) {
-        showError('Lütfen veri seti giriniz.');
-        markFieldError(dataInput);
-        dataInput.focus();
-        return;
-    }
-
-    // Validate: empty sample size
-    if (!sampleSizeVal) {
-        showError('Lütfen örneklem büyüklüğü giriniz.');
-        markFieldError(sampleSizeInput);
-        sampleSizeInput.focus();
-        return;
-    }
-
-    // Parse data: support comma, semicolon, space, tab separators
-    const data = rawData.split(/[,;\s]+/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0)
-        .map(s => parseFloat(s));
-
-    if (data.length === 0 || data.some(isNaN)) {
-        showError('Veri setinde geçersiz değer(ler) var. Lütfen sadece sayı giriniz.');
-        markFieldError(dataInput);
-        dataInput.focus();
-        return;
-    }
-
-    const sampleSize = parseInt(sampleSizeVal);
-    if (isNaN(sampleSize) || sampleSize <= 0) {
-        showError('Örneklem büyüklüğü pozitif bir tam sayı olmalıdır.');
-        markFieldError(sampleSizeInput);
-        sampleSizeInput.focus();
-        return;
-    }
-
-    if (sampleSize > data.length) {
-        showError(`Örneklem büyüklüğü (${sampleSize}), veri sayısından (${data.length}) büyük olamaz.`);
-        markFieldError(sampleSizeInput);
-        sampleSizeInput.focus();
-        return;
-    }
-
     const strataCountVal = document.getElementById('strataCount').value.trim();
 
-    const request = {
-        data: data,
-        sampleSize: sampleSize,
-        classCount: classCountVal ? parseInt(classCountVal) : null,
-        strataCount: strataCountVal ? parseInt(strataCountVal) : null
-    };
+    // Determine which sections have data
+    const hasSamplingParams = minVal || maxVal || popSizeVal || sampleSizeVal;
+    const hasDataset = !!rawData;
+
+    // Must fill at least one section
+    if (!hasSamplingParams && !hasDataset) {
+        showError('Lütfen örneklem parametrelerini veya veri setini giriniz.');
+        markFieldError(minValueInput);
+        minValueInput.focus();
+        return;
+    }
+
+    // Build request
+    const request = {};
+
+    // Validate sampling parameters if provided
+    if (hasSamplingParams) {
+        // All 4 fields required
+        if (!minVal) {
+            showError('Lütfen min değer giriniz.');
+            markFieldError(minValueInput);
+            minValueInput.focus();
+            return;
+        }
+        if (!maxVal) {
+            showError('Lütfen max değer giriniz.');
+            markFieldError(maxValueInput);
+            maxValueInput.focus();
+            return;
+        }
+        if (!popSizeVal) {
+            showError('Lütfen Büyük N (popülasyon büyüklüğü) giriniz.');
+            markFieldError(populationSizeInput);
+            populationSizeInput.focus();
+            return;
+        }
+        if (!sampleSizeVal) {
+            showError('Lütfen Küçük n (örneklem büyüklüğü) giriniz.');
+            markFieldError(sampleSizeInput);
+            sampleSizeInput.focus();
+            return;
+        }
+
+        const minValue = parseFloat(minVal);
+        const maxValue = parseFloat(maxVal);
+        const populationSize = parseInt(popSizeVal);
+        const sampleSize = parseInt(sampleSizeVal);
+
+        if (isNaN(minValue)) {
+            showError('Min değer geçerli bir sayı olmalıdır.');
+            markFieldError(minValueInput);
+            minValueInput.focus();
+            return;
+        }
+        if (isNaN(maxValue)) {
+            showError('Max değer geçerli bir sayı olmalıdır.');
+            markFieldError(maxValueInput);
+            maxValueInput.focus();
+            return;
+        }
+        if (minValue >= maxValue) {
+            showError('Min değer, max değerden küçük olmalıdır.');
+            markFieldError(minValueInput);
+            markFieldError(maxValueInput);
+            minValueInput.focus();
+            return;
+        }
+        if (isNaN(populationSize) || populationSize <= 0) {
+            showError('Büyük N pozitif bir tam sayı olmalıdır.');
+            markFieldError(populationSizeInput);
+            populationSizeInput.focus();
+            return;
+        }
+        if (isNaN(sampleSize) || sampleSize <= 0) {
+            showError('Küçük n pozitif bir tam sayı olmalıdır.');
+            markFieldError(sampleSizeInput);
+            sampleSizeInput.focus();
+            return;
+        }
+        if (sampleSize > populationSize) {
+            showError(`Küçük n (${sampleSize}), Büyük N'den (${populationSize}) büyük olamaz.`);
+            markFieldError(sampleSizeInput);
+            sampleSizeInput.focus();
+            return;
+        }
+
+        request.minValue = minValue;
+        request.maxValue = maxValue;
+        request.populationSize = populationSize;
+        request.sampleSize = sampleSize;
+        request.strataCount = strataCountVal ? parseInt(strataCountVal) : null;
+    } else {
+        // sampleSize still needed for backend (set to 0, won't be used for sampling)
+        request.sampleSize = 0;
+    }
+
+    // Validate dataset if provided
+    if (hasDataset) {
+        const data = rawData.split(/[,;\s]+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0)
+            .map(s => parseFloat(s));
+
+        if (data.length === 0 || data.some(isNaN)) {
+            showError('Veri setinde geçersiz değer(ler) var. Lütfen sadece sayı giriniz.');
+            markFieldError(dataInput);
+            dataInput.focus();
+            return;
+        }
+
+        request.data = data;
+        request.classCount = classCountVal ? parseInt(classCountVal) : null;
+        
+        if (dataSampleSizeVal) {
+            const dataSampleSize = parseInt(dataSampleSizeVal);
+            if (isNaN(dataSampleSize) || dataSampleSize <= 0) {
+                showError('Veri seti örneklem büyüklüğü pozitif bir tam sayı olmalıdır.');
+                markFieldError(dataSampleSizeInput);
+                dataSampleSizeInput.focus();
+                return;
+            }
+            if (dataSampleSize > data.length) {
+                showError(`Örneklem büyüklüğü (${dataSampleSize}), veri sayısından (${data.length}) büyük olamaz.`);
+                markFieldError(dataSampleSizeInput);
+                dataSampleSizeInput.focus();
+                return;
+            }
+            request.dataSampleSize = dataSampleSize;
+        } else {
+            request.dataSampleSize = null;
+        }
+    }
 
     // Loading state
     btn.classList.add('loading');
@@ -172,7 +275,7 @@ async function calculate() {
             return;
         }
 
-        renderResults(result, data.length, sampleSize);
+        renderResults(result, request);
     } catch (err) {
         showError('Sunucuya bağlanılamadı. Lütfen uygulamanın çalıştığından emin olun.');
     } finally {
@@ -187,36 +290,97 @@ function showError(message) {
     errorDiv.style.display = 'block';
 }
 
-function renderResults(data, totalN, sampleSize) {
+function renderResults(data, request) {
     const resultsDiv = document.getElementById('results');
 
+    // Show/hide sampling sections based on availability
+    const hasSampling = data.uretilenPopulasyon && data.uretilenPopulasyon.length > 0;
+    const hasDataset = data.basitSeri && data.basitSeri.length > 0;
+
+    // Üretilen Popülasyon
+    const popSection = document.getElementById('section-pop');
+    if (hasSampling) {
+        popSection.style.display = '';
+        document.getElementById('pop-count').textContent = data.uretilenPopulasyon.length;
+        renderSimpleTable('table-pop', data.uretilenPopulasyon);
+    } else {
+        popSection.style.display = 'none';
+    }
+
     // Basit Rastgele Örneklem
-    document.getElementById('bro-count').textContent = sampleSize;
-    renderSimpleTable('table-bro', data.basitRastgeleOrneklem);
+    const broSection = document.getElementById('section-bro');
+    if (hasSampling && data.basitRastgeleOrneklem) {
+        broSection.style.display = '';
+        document.getElementById('bro-count').textContent = data.basitRastgeleOrneklem.length;
+        renderSimpleTable('table-bro', data.basitRastgeleOrneklem);
+    } else {
+        broSection.style.display = 'none';
+    }
 
     // Sistematik Örneklem
-    const k = Math.floor(totalN / sampleSize);
-    document.getElementById('so-k').textContent = k;
-    renderSimpleTable('table-so', data.sistematikOrneklem);
+    const soSection = document.getElementById('section-so');
+    if (hasSampling && data.sistematikOrneklem) {
+        soSection.style.display = '';
+        const k = Math.floor(request.populationSize / request.sampleSize);
+        document.getElementById('so-k').textContent = k;
+        renderSimpleTable('table-so', data.sistematikOrneklem);
+    } else {
+        soSection.style.display = 'none';
+    }
 
     // Tabakalı Örneklem
-    renderStratifiedTable('table-to', data.tabakaliOrneklem);
+    const toSection = document.getElementById('section-to');
+    if (hasSampling && data.tabakaliOrneklem) {
+        toSection.style.display = '';
+        renderStratifiedTable('table-to', data.tabakaliOrneklem);
+    } else {
+        toSection.style.display = 'none';
+    }
+
+    // Veri Seti Örneklemi
+    const vsoSection = document.getElementById('section-vso');
+    if (hasDataset && data.veriSetiOrneklem) {
+        vsoSection.style.display = '';
+        document.getElementById('vso-count').textContent = data.veriSetiOrneklem.length;
+        renderSimpleTable('table-vso', data.veriSetiOrneklem);
+    } else {
+        vsoSection.style.display = 'none';
+    }
 
     // Basit Seri
-    renderSimpleTable('table-bs', data.basitSeri);
+    const bsSection = document.getElementById('section-bs');
+    if (hasDataset) {
+        bsSection.style.display = '';
+        renderSimpleTable('table-bs', data.basitSeri);
+    } else {
+        bsSection.style.display = 'none';
+    }
 
     // Frekans Serisi
-    renderFrequencySeries('table-fs', data.frekansSeries);
+    const fsSection = document.getElementById('section-fs');
+    if (hasDataset && data.frekansSeries) {
+        fsSection.style.display = '';
+        renderFrequencySeries('table-fs', data.frekansSeries);
+    } else {
+        fsSection.style.display = 'none';
+    }
 
     // Frekans Tablosu
-    renderFrequencyTable('table-ft', data.frekansTablosu);
+    const ftSection = document.getElementById('section-ft');
+    if (hasDataset && data.frekansTablosu) {
+        ftSection.style.display = '';
+        renderFrequencyTable('table-ft', data.frekansTablosu);
+    } else {
+        ftSection.style.display = 'none';
+    }
 
     // Show with animation
     resultsDiv.style.display = 'block';
 
-    // Scroll to results smoothly
+    // Scroll to first visible result
     setTimeout(() => {
-        document.getElementById('section-bro').scrollIntoView({
+        const firstVisible = hasSampling ? 'section-pop' : 'section-bs';
+        document.getElementById(firstVisible).scrollIntoView({
             behavior: 'smooth',
             block: 'start'
         });

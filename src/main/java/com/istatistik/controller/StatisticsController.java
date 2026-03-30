@@ -27,6 +27,8 @@ public class StatisticsController {
             return ResponseEntity.ok(sonuc);
         } catch (IllegalArgumentException hata) {
             return ResponseEntity.badRequest().body(Map.of("error", hata.getMessage()));
+        } catch (Exception hata) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Sunucu hatası: " + hata.getMessage()));
         }
     }
 }

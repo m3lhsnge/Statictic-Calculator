@@ -35,39 +35,90 @@
             <p class="subtitle">Örneklem ve Seri Analiz Aracı</p>
         </header>
 
-        <!-- Input Section -->
+        <!-- Örneklem Parametreleri (BRO, Sistematik, Tabakalı için) -->
+        <section class="card input-card" id="sampling-section">
+            <h2 class="card-title">
+                <span class="card-icon">🎯</span>
+                Örneklem Parametreleri
+            </h2>
+            <p class="card-description" style="margin-bottom: 1rem; opacity: 0.7;">Basit Rastgele, Sistematik ve Tabakalı Örneklem için popülasyon parametrelerini giriniz</p>
+            <div class="form-row form-row-4">
+                <div class="form-group">
+                    <label for="minValue">Min Değer</label>
+                    <input type="number" id="minValue" placeholder="Örnek: 1" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="maxValue">Max Değer</label>
+                    <input type="number" id="maxValue" placeholder="Örnek: 100" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="populationSize">Büyük N <span class="hint">(veri sayısı)</span></label>
+                    <input type="number" id="populationSize" placeholder="Örnek: 50" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="sampleSize">Küçük n <span class="hint">(örneklem)</span></label>
+                    <input type="number" id="sampleSize" placeholder="Örnek: 10" min="1">
+                </div>
+            </div>
+            <div class="form-row form-row-2" style="margin-top: 0.5rem;">
+                <div class="form-group">
+                    <label for="strataCount">Tabaka Sayısı <span class="hint">(opsiyonel)</span></label>
+                    <input type="number" id="strataCount" placeholder="Otomatik (√N)" min="2">
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                </div>
+            </div>
+        </section>
+
+        <!-- Input Section (Veri Seti - Basit Seri, Frekans için) -->
         <section class="card input-card" id="input-section">
             <h2 class="card-title">
                 <span class="card-icon">📊</span>
                 Veri Girişi
             </h2>
+            <p class="card-description" style="margin-bottom: 1rem; opacity: 0.7;">Basit Seri, Frekans Serisi ve Frekans Tablosu için veri setini giriniz</p>
             <div class="form-group">
                 <label for="dataInput">Veri Seti <span class="hint">(virgülle ayrılmış sayılar)</span></label>
                 <textarea id="dataInput" placeholder="Örnek: 5, 12, 8, 3, 15, 7, 20, 11, 9, 6, 14, 2, 18, 10, 4" rows="3"></textarea>
             </div>
-            <div class="form-row form-row-3">
+            <div class="form-row form-row-2">
                 <div class="form-group">
-                    <label for="sampleSize">Örneklem Büyüklüğü (n)</label>
-                    <input type="number" id="sampleSize" placeholder="Örnek: 5" min="1">
+                    <label for="dataSampleSize">Örneklem Büyüklüğü (n) <span class="hint">(opsiyonel)</span></label>
+                    <input type="number" id="dataSampleSize" placeholder="Örnek: 5" min="1">
                 </div>
                 <div class="form-group">
                     <label for="classCount">Sınıf Sayısı <span class="hint">(opsiyonel)</span></label>
                     <input type="number" id="classCount" placeholder="Otomatik (Sturges)" min="1">
                 </div>
-                <div class="form-group">
-                    <label for="strataCount">Tabaka Sayısı <span class="hint">(opsiyonel)</span></label>
-                    <input type="number" id="strataCount" placeholder="Otomatik (√N)" min="2">
-                </div>
             </div>
+        </section>
+
+        <!-- Hesapla Butonu -->
+        <div style="text-align: center; margin: 1.5rem 0;">
             <button id="calculateBtn" class="btn-calculate" onclick="calculate()">
                 <span class="btn-text">Hesapla</span>
                 <span class="btn-icon">→</span>
             </button>
-            <div id="errorMessage" class="error-message" style="display:none;"></div>
-        </section>
+        </div>
+        <div id="errorMessage" class="error-message" style="display:none;"></div>
 
         <!-- Results Section -->
         <div id="results" class="results-wrapper" style="display:none;">
+
+            <!-- Üretilen Popülasyon -->
+            <section class="card result-card" id="section-pop">
+                <h2 class="card-title">
+                    <span class="card-icon">🌐</span>
+                    Üretilen Popülasyon
+                </h2>
+                <p class="card-description">Min-Max arasında rastgele üretilen <strong id="pop-count"></strong> birim</p>
+                <div class="table-wrapper">
+                    <table id="table-pop">
+                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
 
             <!-- Basit Rastgele Örneklem -->
             <section class="card result-card" id="section-bro">
@@ -75,7 +126,7 @@
                     <span class="card-icon">🎲</span>
                     Basit Rastgele Örneklem
                 </h2>
-                <p class="card-description">Veri setinden rastgele seçilen <strong id="bro-count"></strong> birim</p>
+                <p class="card-description">Popülasyondan rastgele seçilen <strong id="bro-count"></strong> birim</p>
                 <div class="table-wrapper">
                     <table id="table-bro">
                         <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
@@ -105,7 +156,7 @@
                     <span class="card-icon">🏗️</span>
                     Tabakalı Örneklem
                 </h2>
-                <p class="card-description">Veriler tabakalara ayrılarak her tabakadan oransal seçim yapılmıştır</p>
+                <p class="card-description">Popülasyon tabakalara ayrılarak her tabakadan oransal seçim yapılmıştır</p>
                 <div class="table-wrapper">
                     <table id="table-to">
                         <thead>
@@ -116,6 +167,21 @@
                                 <th>Seçilen Değerler</th>
                             </tr>
                         </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Veri Seti Örneklemi -->
+            <section class="card result-card" id="section-vso">
+                <h2 class="card-title">
+                    <span class="card-icon">🎯</span>
+                    Veri Seti Örneklemi
+                </h2>
+                <p class="card-description">Veri setinden rastgele seçilen <strong id="vso-count"></strong> birim</p>
+                <div class="table-wrapper">
+                    <table id="table-vso">
+                        <thead><tr><th>Sıra</th><th>Değer</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>

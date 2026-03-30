@@ -12,6 +12,8 @@ public class StatisticsResponse {
     private Map<Double, Integer> frekansSeries;          // Değer -> tekrar sayısı
     private List<FrequencyRow> frekansTablosu;            // Gruplandırılmış frekans tablosu
     private List<StratifiedRow> tabakaliOrneklem;         // Tabakalı örneklem sonuçları
+    private List<Double> uretilenPopulasyon;              // Min-Max arası üretilen N sayı
+    private List<Double> veriSetiOrneklem;                // Veri setinden seçilen örneklem
 
     public StatisticsResponse() {
     }
@@ -62,5 +64,21 @@ public class StatisticsResponse {
 
     public void setTabakaliOrneklem(List<StratifiedRow> tabakaliOrneklem) {
         this.tabakaliOrneklem = tabakaliOrneklem;
+    }
+
+    public List<Double> getUretilenPopulasyon() {
+        return uretilenPopulasyon;
+    }
+
+    public void setUretilenPopulasyon(List<Double> uretilenPopulasyon) {
+        this.uretilenPopulasyon = uretilenPopulasyon;
+    }
+
+    public List<Double> getVeriSetiOrneklem() {
+        return veriSetiOrneklem;
+    }
+
+    public void setVeriSetiOrneklem(List<Double> veriSetiOrneklem) {
+        this.veriSetiOrneklem = veriSetiOrneklem;
     }
 }

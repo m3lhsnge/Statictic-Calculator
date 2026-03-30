@@ -1,0 +1,24 @@
+Test 1: Normal Tam Sayilar
+Aralik: 1 - 3, Frekans: 2
+Aralik: 3 - 5, Frekans: 2
+Aralik: 5 - 7, Frekans: 2
+Aralik: 7 - 9, Frekans: 2
+Aralik: 9 - 11, Frekans: 2
+
+Test 2: Kucuk Ondalikli Sayilar (Math.ceil Sorunu)
+Aralik: 0.10 - 1.10, Frekans: 10
+Aralik: 1.10 - 2.10, Frekans: 0
+Aralik: 2.10 - 3.10, Frekans: 0
+Aralik: 3.10 - 4.10, Frekans: 0
+Aralik: 4.10 - 5.10, Frekans: 0
+
+Test 3: Ufak Aralikli Buyuk Sayilar
+Aralik: 100.10 - 101.10, Frekans: 7
+Aralik: 101.10 - 102.10, Frekans: 0
+Aralik: 102.10 - 103.10, Frekans: 0
+Aralik: 103.10 - 104.10, Frekans: 0
+
+Test 4: Sayi Atlanmasi (Precision Sorunu)
+Aralik: 4.10 - 5.10, Frekans: 3
+Aralik: 5.10 - 6.10, Frekans: 0
+Aralik: 6.10 - 7.10, Frekans: 0
